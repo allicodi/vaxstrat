@@ -788,14 +788,14 @@ do_sens_aipw_nat_inf <- function(data,
   function(eps, psi_10_eps_X, psi_10_eps){
     ( Z_i / pi_1) * ( S_i / rho_bar_0 ) * ( Y_i - mu_11_X ) + 
       Z_i / pi_1 * ( mu_11_X / rho_bar_0 ) * ( S_i - rho_1_X ) - 
-      mean(psi_11_epsilon) / rho_bar_0 * ( 1 - Z_i ) / pi_0 * (S_i - rho_0) -
-      mean(psi_11_epsilon) / rho_bar_0 * (rho_0_X - rho_bar_0) +
+      psi_11_epsilon / rho_bar_0 * ( 1 - Z_i ) / pi_0 * (S_i - rho_0_X) -
+      psi_11_epsilon / rho_bar_0 * (rho_0_X - rho_bar_0) +
       psi_11_epsilon_X - psi_11_epsilon + 
       Z_i / pi_1 * (1 - S_i) / (rho_bar_0) * (rho_0_X - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps) * ( Y_i - mu_10_X ) + 
       ( 1 - Z_i ) / pi_0 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps) * mu_10_X / rho_bar_0 * ( S_i - rho_0_X ) -
       Z_i / pi_1 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps) * mu_10_X / rho_bar_0 * ( S_i - rho_1_X ) -
-      mean(psi_10_eps) / rho_bar_0 * (1 - Z_i) / pi_0 * ( S_i - rho_0) -
-      mean(psi_10_eps) / rho_bar_0 * (rho_0 - rho_bar_0) -
+      psi_10_eps / rho_bar_0 * (1 - Z_i) / pi_0 * ( S_i - rho_0_X ) -
+      psi_10_eps / rho_bar_0 * (rho_0_X - rho_bar_0) -
       Z_i / pi_1 * ( rho_0_X - rho_1_X ) / rho_bar_0 * mu_10_X / ((1 - eps) * rho_0_X - rho_1_X + eps) * ( S_i - rho_1_X ) - 
       (1 - eps) * (1 - Z_i) / (pi_0) * (rho_0_X - rho_1_X) / rho_bar_0 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps)^2 * mu_10_X * (S_i - rho_0_X) + 
       Z_i / pi_1 * (rho_0_X - rho_1_X) / rho_bar_0 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps)^2 * mu_10_X * ( S_i - rho_1_X ) + 
