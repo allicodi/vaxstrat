@@ -361,7 +361,7 @@ do_aipw_nat_inf <- function(
       (data[[Z_name]] / pi_1_X) * (data[[S_name]] / rho_bar_0) * (data[[Y_name]] - mu_11_X) +
         ((1 - data[[S_name]]) / (1 - rho_bar_dot)) * (rho_0_X - rho_1_X) / rho_bar_0 * (data[[Y_name]] - mu_dot0_X) + 
         (data[[Z_name]] / pi_1_X) * (mu_11_X - mu_dot0_X) / rho_bar_0 * (data[[S_name]] - rho_1_X) + 
-        ((1 - data[[Z_name]]) / pi_0_X) * (mu_10_X - psi_1) / rho_bar_0 * (data[[S_name]] - rho_0_X) - 
+        ((1 - data[[Z_name]]) / pi_0_X) * (mu_dot0_X - psi_1) / rho_bar_0 * (data[[S_name]] - rho_0_X) - 
         psi_1 / rho_bar_0 * (rho_0_X - rho_bar_0) + psi_tilde_1_X - psi_1
     )
     
@@ -784,23 +784,24 @@ do_sens_aipw_nat_inf <- function(data,
   })
   
   augmentation_1_epsilon <- mapply(
-    eps = epsilon, psi_10_eps_X = psi_10_epsilon_X, psi_10_eps = psi_10_epsilon,
-    function(eps, psi_10_eps_X, psi_10_eps){
-      ( Z_i / pi_1) * ( S_i / rho_bar_0 ) * ( Y_i - mu_11_X ) + 
-        Z_i / pi_1 * ( mu_11_X / rho_bar_0 ) * ( S_i - rho_1_X ) - 
-        mean(psi_11_epsilon) / rho_bar_0 * ( 1 - Z_i ) / pi_0 * (S_i - rho_bar_0) + 
-        psi_11_epsilon_X - psi_11_epsilon + 
-        Z_i / pi_1 * (1 - S_i) / (rho_bar_0) * (rho_0_X - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps) * ( Y_i - mu_10_X ) + 
-        ( 1 - Z_i ) / pi_0 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps) * mu_10_X / rho_bar_0 * ( S_i - rho_0_X ) -
-        Z_i / pi_1 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps) * mu_10_X / rho_bar_0 * ( S_i - rho_1_X ) - 
-        psi_10_eps / rho_bar_0 * (1 - Z_i) / pi_0 * ( S_i - rho_bar_0 ) -
-        Z_i / pi_1 * ( rho_0_X - rho_1_X ) / rho_bar_0 * mu_10_X / ((1 - eps) * rho_0_X - rho_1_X + eps) * ( S_i - rho_1_X ) - 
-        (1 - eps) * (1 - Z_i) / (pi_0) * (rho_0_X - rho_1_X) / rho_bar_0 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps)^2 * mu_10_X * (S_i - rho_0_X) + 
-        Z_i / pi_1 * (rho_0_X - rho_1_X) / rho_bar_0 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps)^2 * mu_10_X * ( S_i - rho_1_X ) + 
-        psi_10_eps_X - psi_10_eps
-    }, SIMPLIFY = FALSE
+  eps = epsilon, psi_10_eps_X = psi_10_epsilon_X, psi_10_eps = psi_10_epsilon,
+  function(eps, psi_10_eps_X, psi_10_eps){
+    ( Z_i / pi_1) * ( S_i / rho_bar_0 ) * ( Y_i - mu_11_X ) + 
+      Z_i / pi_1 * ( mu_11_X / rho_bar_0 ) * ( S_i - rho_1_X ) - 
+      mean(psi_11_epsilon) / rho_bar_0 * ( 1 - Z_i ) / pi_0 * (S_i - rho_0) -
+      mean(psi_11_epsilon) / rho_bar_0 * (rho_0_X - rho_bar_0) +
+      psi_11_epsilon_X - psi_11_epsilon + 
+      Z_i / pi_1 * (1 - S_i) / (rho_bar_0) * (rho_0_X - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps) * ( Y_i - mu_10_X ) + 
+      ( 1 - Z_i ) / pi_0 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps) * mu_10_X / rho_bar_0 * ( S_i - rho_0_X ) -
+      Z_i / pi_1 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps) * mu_10_X / rho_bar_0 * ( S_i - rho_1_X ) -
+      mean(psi_10_eps) / rho_bar_0 * (1 - Z_i) / pi_0 * ( S_i - rho_0) -
+      mean(psi_10_eps) / rho_bar_0 * (rho_0 - rho_bar_0) -
+      Z_i / pi_1 * ( rho_0_X - rho_1_X ) / rho_bar_0 * mu_10_X / ((1 - eps) * rho_0_X - rho_1_X + eps) * ( S_i - rho_1_X ) - 
+      (1 - eps) * (1 - Z_i) / (pi_0) * (rho_0_X - rho_1_X) / rho_bar_0 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps)^2 * mu_10_X * (S_i - rho_0_X) + 
+      Z_i / pi_1 * (rho_0_X - rho_1_X) / rho_bar_0 * (1 - rho_1_X) / ((1 - eps) * rho_0_X - rho_1_X + eps)^2 * mu_10_X * ( S_i - rho_1_X ) + 
+      psi_10_eps_X - psi_10_eps
+  }, SIMPLIFY = FALSE
   )
-  
   
   psi_1_epsilon_aipw <- mapply(
     psi_1_eps = psi_1_epsilon, augmentation_1_eps = augmentation_1_epsilon, 
