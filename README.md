@@ -4,7 +4,12 @@
 
 **vaxstrat** implements principal stratification methods for estimating causal effects of vaccination on post-infection outcomes.
 
-Existing approaches focus on the **Doomed** stratum (individuals who would be infected regardless of vaccination), which may understate vaccine benefit by excluding individuals whose post-infection outcomes would have been improved had vaccination prevented infection entirely. `vaxstrat` additionally targets estimands for the **Naturally Infected** — individuals who would be infected only in the absence of a vaccine — and provides a suite of estimation strategies with accompanying inferential tools.
+The package includes multiple estimators for evaluating vaccine effects in the following principal strata:
+
+- the **Doomed**, individuals who would be infected regardless of vaccination),
+- the **Naturally Infected**, individuals who would be infected only in the absence of a vaccine.
+
+The package also includes estimators of nonparametric bounds for Naturally Infected effects, as well as efficient estimators of marginal effects.
 
 ## Installation
 
@@ -16,28 +21,39 @@ devtools::install_github("allicodi/vaxstrat")
 
 ## Key Features
 
-- **Multiple estimands**: Naturally Infected, Doomed stratum, and population-level (marginal) effects
+- **Multiple estimands**: Naturally Infected, Doomed, and population-level (marginal) effects
 - **Multiple estimators**: G-computation, IPW, AIPW, TMLE, nonparametric bounds, covariate-adjusted bounds, and sensitivity analyses
-- **Flexible nuisance estimation**: Standard GLMs or SuperLearner ensembles (`ml = TRUE`)
+- **Flexible nuisance estimation**: Standard GLMs or SuperLearner ensembles 
 - **Principled inference**: Closed-form standard errors for AIPW/TMLE; bootstrap for all other methods; permutation tests for bounds
-- **Identification flexibility**: Support for the exclusion restriction, cross-world (partial principal ignorability) assumptions, or neither (bounds only)
+- **Identification flexibility**: Support for the exclusion restriction, partial principal ignorability assumptions, both, or neither (bounds only)
 
 ## Conceptual Background
 
-The key challenge is that post-infection outcomes (e.g., disease severity, antibiotic use, growth faltering) are only observed in infected individuals, and infection status is itself affected by treatment. Failure to account for this may introduce selection bias. 
-
-`vaxstrat` handles this via principal stratification, partitioning individuals by their potential infection status under each treatment arm:
+`vaxstrat` considers estimating effects of vaccines on post-infection outcomes using principal stratification. Under the assumption that the vaccine cannot cause an increased risk of infection, individuals can be partitioned based on their potential infection status under each treatment arm ($S(z)$ for $z = 0,1$).
 
 | Stratum | $S(1)$ | $S(0)$ | Description |
 |---|---|---|---|
 | **Immune** | 0 | 0 | Never infected |
-| **Naturally Infected** | 0 | 1 | Infected in absence of vaccine |
+| **Protected** | 0 | 1 | Infected only in absence of vaccine |
 | **Doomed** | 1 | 1 | Infected regardless of vaccine |
 
-The **Naturally Infected** stratum is of particular interest: it captures individuals for whom vaccination prevented infection, meaning any post-infection outcomes observed under vaccination in this group reflect vaccine-modified disease. 
+The **Naturally Infected** stratum is consists of the Protected and Doomed individuals, i.e., individuals who would be infected in absence of vaccination. 
 
-## Quick Start
+Identification of effects in the Naturally Infected requires either an **exclusion restriction** (vaccination cannot affect the post-infection outcome in absence of an infection), **partial principal ignorability** (that Protected and Immune individuals are exchangeable conditional on a set of covariates $X$), or both. Without either assumption, nonparametric bounds are available.
 
+## Example: Rotavirus Vaccine Trial Reanalysis
+ 
+The package includes `provide`, a simulated dataset inspired by the PROVIDE study, which examined rotavirus vaccination effects on antibiotic use in infants. The variables map directly to the main function arguments:
+ 
+| Variable | Role | Description |
+|---|---|---|
+| `rotaarm` | Treatment (`Z`) | Rotavirus vaccine assignment (0/1) |
+| `rotaepi` | Infection (`S`) | Rotavirus infection episode (0/1) |
+| `any_abx_wk52` | Outcome (`Y`) | Any antibiotic use by 52 weeks (0/1) |
+| `wk10_haz` | Covariate (`X`) | Height-for-age Z-score at 10 weeks |
+| `gender` | Covariate (`X`) | Infant gender |
+| `num_hh_sleep` | Covariate (`X`) | Household size (sleeping members) |
+ 
 ```r
 library(vaxstrat)
  
@@ -109,46 +125,32 @@ Population - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                          
 ```
 
-## Estimands
-
-### Naturally Infected (`nat_inf`)
-
-The average treatment effect on the outcome among individuals who would be infected in the absence of vaccination ($S(0) = 1$). Requires either the **exclusion restriction** (vaccination does not affect the outcome except through preventing infection) or **partial principal ignorability** (cross-world assumption) for point identification. Without these, nonparametric bounds are available.
-
-### Doomed (`doomed`)
-
-The average treatment effect among individuals who would be infected regardless of vaccination ($S(0) = S(1) = 1$). This is the classical principal stratification estimand for post-infection outcomes.
-
-### Population (`pop`)
-
-The marginal average treatment effect on the outcome across all individuals.
-
 ## Estimation Methods
- 
+
+Estimation of effects requires estimation of certain regression quantities. These include: 
+- the conditional mean of the postinfection outcome ($Y$) given infection status ($S$), vaccine status ($Z$) and covariates ($X$),
+- the conditional probability of infection ($S$) given vaccine ($Z$) and covariates ($X$), and
+- the conditional probability of vaccination ($Z$) given covariates ($X$).
+
+Based on (a subset of) these estimates, the following estimation techniques are available. 
+
 | Method | Description | SE source |
 |---|---|---|
 | `gcomp` | G-computation (outcome regression) | Bootstrap |
-| `ipw` | Inverse probability weighting | Bootstrap |
-| `aipw` | Augmented IPW (doubly robust) | Closed-form or bootstrap |
+| `ipw` | Inverse probability weighting (propensity score) | Bootstrap |
+| `aipw` | Augmented IPW (multiply robust) | Closed-form or bootstrap |
 | `tmle` | Targeted maximum likelihood estimation | Closed-form or bootstrap |
 | `bound` | Nonparametric bounds (no cross-world assumptions) | Bootstrap / permutation |
 | `cov_adj_bound` | Covariate-adjusted bounds | Bootstrap |
 | `sens` | Sensitivity analysis over range of `epsilon` values | Closed-form or bootstrap |
  
-AIPW and TMLE estimators are **doubly robust**: they remain consistent if either the outcome model or the propensity/infection model is correctly specified. When `ml = TRUE`, nuisance parameters are estimated using **SuperLearner** ensemble learning.
- 
-## Identifying Assumptions
- 
-The function exposes two key assumptions, both of which can be toggled:
- 
-- **`exclusion_restriction`**: Vaccination affects the outcome only by preventing infection. Under this assumption, the Naturally Infected estimand simplifies because vaccinated individuals in this stratum are never observed to be infected.
-- **`cross_world`** (partial principal ignorability): Conditional on covariates, potential infection status is independent of the potential outcome under the opposite treatment arm. This enables point identification without the exclusion restriction.
- 
-When neither assumption is imposed, the package returns **nonparametric bounds** on the estimand.
+AIPW and TMLE estimators are **multiply robust**: they remain consistent if certain combinations of models are correctly specified. 
+
+When `ml = TRUE`, nuisance parameters are estimated using **SuperLearner** ensemble learning.
  
 ## Sensitivity Analysis
  
-When `method = "sens"`, the package sweeps over a grid of sensitivity parameter values `epsilon` (deviations from the cross-world assumption) and reports point estimates, standard errors, and hypothesis test results at each value:
+When `method = "sens"`, the package sweeps over a grid of sensitivity parameter values `epsilon` (deviations from the partial principal ignorability assumption) and reports point estimates, standard errors, and hypothesis test results at each value:
  
 ```r
 fit_sens <- vaxstrat(
@@ -218,21 +220,7 @@ fit
  
 Use `print(fit)` for a formatted table of results.
  
-## Example: Rotavirus Vaccine Trial Reanalysis
- 
-The package includes `provide`, a simulated dataset inspired by the PROVIDE study, which examined rotavirus vaccination effects on antibiotic use in infants. The variables map directly to the main function arguments:
- 
-| Variable | Role | Description |
-|---|---|---|
-| `rotaarm` | Treatment (`Z`) | Rotavirus vaccine assignment (0/1) |
-| `rotaepi` | Infection (`S`) | Rotavirus infection episode (0/1) |
-| `any_abx_wk52` | Outcome (`Y`) | Any antibiotic use by 52 weeks (0/1) |
-| `wk10_haz` | Covariate (`X`) | Height-for-age Z-score at 10 weeks |
-| `gender` | Covariate (`X`) | Infant gender |
-| `num_hh_sleep` | Covariate (`X`) | Household size (sleeping members) |
- 
+
 ## Citation
  
-If you use `vaxstrat` in your research, please cite:
- 
-> [Authors]. (Year). *[Paper title]*. [Journal]. [DOI]
+If you use `vaxstrat` in your research, please cite our forthcoming manuscript.
