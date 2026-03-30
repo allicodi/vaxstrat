@@ -2,20 +2,32 @@
 % Please edit documentation in R/estimate_doomed.R
 \name{do_ipw_doomed}
 \alias{do_ipw_doomed}
-\title{Function for IPW of counterfactual post-infection outcomes in the
-doomed principal stratum}
+\title{IPW estimator for counterfactual outcomes in the doomed principal stratum}
 \usage{
 do_ipw_doomed(data, models, S_name, Y_name, Z_name)
 }
 \arguments{
-\item{data}{dataset to predict on}
+\item{data}{A \code{data.frame} containing the dataset to predict on.}
 
-\item{models}{list of pre-fit models needed for estimation}
+\item{models}{A list of pre-fitted models as returned by \code{fit_models()}
+or \code{fit_ml_models()}.}
+
+\item{S_name}{Character; name of the infection indicator variable.}
+
+\item{Y_name}{Character; name of the outcome variable.}
+
+\item{Z_name}{Character; name of the treatment variable.}
 }
 \value{
-IPW estimate of growth effect in the doomed principal stratum
+A named numeric vector containing:
+\describe{
+\item{additive_effect}{Estimated additive effect.}
+\item{log_multiplicative_effect}{Estimated log multiplicative effect.}
+\item{psi_1}{Estimated mean counterfactual outcome under treatment.}
+\item{psi_0}{Estimated mean counterfactual outcome under control.}
+}
 }
 \description{
-Function for IPW of counterfactual post-infection outcomes in the
-doomed principal stratum
+Estimates the average counterfactual outcomes among individuals in the doomed
+principal stratum using inverse probability weighting (IPW).
 }

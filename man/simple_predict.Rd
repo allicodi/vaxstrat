@@ -2,18 +2,25 @@
 % Please edit documentation in R/utils.R
 \name{simple_predict}
 \alias{simple_predict}
-\title{Helper function to predict from a model appropriately irrespective of class}
+\title{Unified prediction helper for fitted models}
 \usage{
 simple_predict(model, newdata)
 }
 \arguments{
-\item{model}{A fitted model of class \code{'glm'} or \code{'SuperLearner'}}
+\item{model}{A fitted model object of class \code{"glm"} or \code{"SuperLearner"}.}
 
-\item{newdata}{A \code{data.frame} to obtain predictions on}
+\item{newdata}{A \code{data.frame} containing covariate values at which predictions are computed.}
 }
 \value{
-Predictions from \code{model} on \code{newdata}
+A numeric vector of predicted values corresponding to \code{newdata}.
 }
 \description{
-Helper function to predict from a model appropriately irrespective of class
+Generates predictions from supported model objects in a consistent way.
+}
+\details{
+This function standardizes prediction calls across supported model classes:
+\itemize{
+\item For \code{"glm"} objects, predictions are obtained using \code{type = "response"}.
+\item For \code{"SuperLearner"} objects, predictions are extracted from the \code{$pred} slot.
+}
 }

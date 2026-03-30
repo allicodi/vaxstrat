@@ -2,7 +2,7 @@
 % Please edit documentation in R/estimate_doomed.R
 \name{do_aipw_doomed}
 \alias{do_aipw_doomed}
-\title{Function for efficient AIPW estimator in the doomed stratum}
+\title{Augmented IPW estimator for doomed principal stratum}
 \usage{
 do_aipw_doomed(
   data,
@@ -14,21 +14,41 @@ do_aipw_doomed(
 )
 }
 \arguments{
-\item{data}{dataset to predict on}
+\item{data}{A \code{data.frame} containing the dataset to predict on.}
 
-\item{models}{list of pre-fit models needed for estimation}
+\item{models}{A list of pre-fitted models as returned by \code{fit_models()}
+or \code{fit_ml_models()}.}
 
-\item{Y_name}{name of growth outcome variable, default Y}
+\item{Y_name}{Character; name of the outcome variable. Default is \code{"Y"}.}
 
-\item{Z_name}{name of vaccine treatment variable, default Z}
+\item{Z_name}{Character; name of the treatment variable. Default is \code{"Z"}.}
 
-\item{S_name}{name of infection variable, default Y}
+\item{S_name}{Character; name of the infection variable. Default is \code{"S"}.}
 
-\item{return_se}{flag to return standard error, defualt FALSE}
+\item{return_se}{Logical; whether to return closed form standard errors. Default is \code{FALSE}.}
 }
 \value{
-AIPW estimate of growth effect in doomed stratum (+ standard error if return_se = TRUE)
+If \code{return_se = FALSE}, a named numeric vector containing:
+\describe{
+\item{additive_effect}{Estimated additive effect.}
+\item{log_multiplicative_effect}{Estimated log multiplicative effect.}
+}
+
+If \code{return_se = TRUE}, returns:
+\describe{
+\item{additive_effect}{Estimated additive effect.}
+\item{additive_se}{Standard error for additive effect.}
+\item{log_multiplicative_effect}{Estimated log multiplicative effect.}
+\item{log_multiplicative_se}{Standard error for log multiplicative effect.}
+\item{psi_1}{Estimated mean under treatment.}
+\item{se_psi_1}{Standard error for \code{psi_1}.}
+\item{psi_0}{Estimated mean under control.}
+\item{se_psi_0}{Standard error for \code{psi_0}.}
+}
 }
 \description{
-Function for efficient AIPW estimator in the doomed stratum
+Computes an efficient augmented inverse probability weighted (AIPW) estimator
+for the vaccine effect in the doomed principal stratum.
+This estimator is doubly robust: it is consistent if either the outcome model
+or the treatment/infection models are correctly specified.
 }

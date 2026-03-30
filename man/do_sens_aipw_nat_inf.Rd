@@ -2,7 +2,7 @@
 % Please edit documentation in R/estimate_nat_inf.R
 \name{do_sens_aipw_nat_inf}
 \alias{do_sens_aipw_nat_inf}
-\title{Function for efficient AIPW estimator for sensitivity analysis}
+\title{Sensitivity analysis using AIPW estimator}
 \usage{
 do_sens_aipw_nat_inf(
   data,
@@ -15,23 +15,31 @@ do_sens_aipw_nat_inf(
 )
 }
 \arguments{
-\item{data}{dataset to predict on}
+\item{data}{A data.frame containing observed data.}
 
-\item{models}{list of pre-fit models needed for estimation}
+\item{models}{A named list of fitted nuisance models.}
 
-\item{Y_name}{name of growth outcome variable, default Y}
+\item{Y_name}{Character string specifying the outcome variable.}
 
-\item{Z_name}{name of vaccine treatment variable, default Z}
+\item{Z_name}{Character string specifying the treatment variable.}
 
-\item{S_name}{name of infection variable, default Y}
+\item{S_name}{Character string specifying the infection indicator.}
 
-\item{return_se}{flag to return standard error, defualt FALSE}
+\item{epsilon}{Numeric vector of sensitivity parameters.}
 
-\item{epislon}{a vector of values for the sensitivity parameter}
+\item{return_se}{Logical; whether to return standard errors.}
 }
 \value{
-AIPW estimate of growth effect (+ standard error if return_se = TRUE)
+A list with class \code{"sens"} containing:
+\describe{
+\item{epsilon}{Grid of sensitivity parameter values.}
+\item{psi_1_epsilon}{Estimated \eqn{\psi_1} for each epsilon.}
+\item{psi_0_aipw}{Baseline estimate of \eqn{\psi_0}.}
+\item{additive_effect}{Additive effects across epsilon values.}
+\item{log_multiplicative_effect}{Log multiplicative effects across epsilon values.}
+}
 }
 \description{
-Function for efficient AIPW estimator for sensitivity analysis
+Performs sensitivity analysis for violations of cross-world assumptions using
+a parameter \eqn{\epsilon}.
 }

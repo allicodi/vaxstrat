@@ -2,8 +2,7 @@
 % Please edit documentation in R/estimate_nat_inf.R
 \name{do_ipw_nat_inf}
 \alias{do_ipw_nat_inf}
-\title{Function for IPW of counterfactual post-infection outcomes in the
-naturally infected principal strata}
+\title{Inverse probability weighting estimator for naturally infected principal stratum}
 \usage{
 do_ipw_nat_inf(
   data,
@@ -15,20 +14,32 @@ do_ipw_nat_inf(
 )
 }
 \arguments{
-\item{data}{dataset to predict on}
+\item{data}{A data.frame containing observed data.}
 
-\item{models}{list of pre-fit models needed for estimation}
+\item{models}{A named list of fitted nuisance models.}
 
-\item{S_name}{TODO}
+\item{exclusion_restriction}{Logical; whether the exclusion restriction assumption is imposed.}
 
-\item{Y_name}{TODO}
+\item{S_name}{Character string specifying the infection indicator.}
 
-\item{Z_name}{TODO}
+\item{Y_name}{Character string specifying the outcome variable.}
+
+\item{Z_name}{Character string specifying the treatment variable.}
 }
 \value{
-IPW estimate of growth effect in the naturally infected principal stratum
+A named numeric vector with:
+\describe{
+\item{additive_effect}{Estimated difference \eqn{\psi_1 - \psi_0}.}
+\item{log_multiplicative_effect}{Estimated log ratio \eqn{\log(\psi_1 / \psi_0)}.}
+\item{psi_1}{Estimated mean outcome under treatment.}
+\item{psi_0}{Estimated mean outcome under control.}
+}
 }
 \description{
-Function for IPW of counterfactual post-infection outcomes in the
-naturally infected principal strata
+Computes estimates of counterfactual post-infection outcomes using inverse
+probability weighting (IPW).
+}
+\details{
+If \code{exclusion_restriction = FALSE}, estimation relies on cross-world
+assumptions. Otherwise, an alternative IPW representation is used.
 }

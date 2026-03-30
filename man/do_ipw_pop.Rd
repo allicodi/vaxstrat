@@ -2,22 +2,34 @@
 % Please edit documentation in R/estimate_pop.R
 \name{do_ipw_pop}
 \alias{do_ipw_pop}
-\title{Function for IPW of average counterfactual post-infection outcome marginally}
+\title{Inverse probability weighting (IPW) estimator for population-average vaccine effect}
 \usage{
 do_ipw_pop(data, models, Z_name = "Z", Y_name = "Y")
 }
 \arguments{
-\item{data}{dataset to predict on}
+\item{data}{A data.frame containing the observed data.}
 
-\item{models}{list of pre-fit models needed for estimation}
+\item{models}{A named list containing the propensity score model:
+\describe{
+\item{fit_Z_X}{Model for \eqn{P(Z = 1 \mid X)}}
+}}
 
-\item{Z_name}{name of vaccine treatment variable, default Z}
+\item{Z_name}{Character; name of the treatment variable. Default is \code{"Z"}.}
 
-\item{Y_name}{character vector containing name(s) of post-infection outcome, default Y}
+\item{Y_name}{Character; name of the outcome variable. Default is \code{"Y"}.}
 }
 \value{
-g-comp estimate of growth effect for population estimand
+A named numeric vector containing:
+\describe{
+\item{additive_effect}{Estimated additive effect}
+\item{log_multiplicative_effect}{Log multiplicative effect}
+\item{psi_1}{Estimated mean outcome under treatment}
+\item{psi_0}{Estimated mean outcome under control}
+}
 }
 \description{
-Function for IPW of average counterfactual post-infection outcome marginally
+Estimates the marginal average treatment effect using inverse probability
+weighting:
+\deqn{E[Y(1)] = E\left[\frac{Z Y}{P(Z = 1 \mid X)}\right], \quad
+      E[Y(0)] = E\left[\frac{(1 - Z) Y}{P(Z = 0 \mid X)}\right]}
 }

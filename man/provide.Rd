@@ -3,22 +3,25 @@
 \docType{data}
 \name{provide}
 \alias{provide}
-\title{Example simulated dataset based on the PROVIDE study}
+\title{Example dataset inspired by the PROVIDE study}
 \format{
-A data frame with X rows and Y variables:
+A data frame with multiple observations and the following variables:
 \describe{
-\item{wk10_haz}{Height-for-age Z-score at 10 weeks of age (numeric)}
-\item{gender}{Infant gender, either \code{"Male"} or \code{"Female"} (character)}
-\item{num_hh_sleep}{Number of people sleeping in the household (integer)}
-\item{rotaarm}{Indicator for assignment to rotavirus vaccination arm (0 = control, 1 = vaccine) (integer)}
-\item{rotaepi}{Indicator for rotavirus episode during follow-up (0 = no, 1 = yes) (integer)}
-\item{any_abx_wk52}{Any antibiotic usage reported through 52 weeks of age (0 = no, 1 = yes) (integer)}
+\item{wk10_haz}{Height-for-age Z-score at 10 weeks (numeric).}
+\item{gender}{Infant gender ("Male", "Female").}
+\item{num_hh_sleep}{Number of individuals sleeping in the household (integer).}
+\item{rotaarm}{Vaccination indicator (0 = control, 1 = vaccine).}
+\item{rotaepi}{Infection indicator (0 = no episode, 1 = episode).}
+\item{any_abx_wk52}{Any antibiotic use by 52 weeks (0/1).}
 }
+}
+\source{
+Simulated data loosely based on the PROVIDE study.
 }
 \usage{
 provide
 }
 \description{
-Example simulated dataset based on the PROVIDE study
+A simulated dataset based on PROVIDE study data for analysis of vaccine on antibiotic use
 }
 \keyword{datasets}

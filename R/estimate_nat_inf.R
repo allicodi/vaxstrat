@@ -1,10 +1,22 @@
-#' Function for covariate-unadjusted estimation of counterfactual post-infection outcomes in the 
-#' naturally infected principal strata
-#' @inheritParams vegrowth
-#' 
+#' Unadjusted estimator for naturally infected principal stratum
+#'
+#' Computes covariate-unadjusted estimates of counterfactual post-infection
+#' outcomes among the naturally infected principal stratum.
+#'
+#' @param data A data.frame containing observed data.
+#' @param Z_name Character string specifying the treatment (vaccination) variable.
+#' @param Y_name Character string specifying the outcome (e.g., growth) variable.
+#' @param S_name Character string specifying the infection indicator.
+#'
+#' @return A named numeric vector containing:
+#' \describe{
+#'   \item{additive_effect}{Estimated difference \eqn{\psi_1 - \psi_0}.}
+#'   \item{log_multiplicative_effect}{Estimated log ratio \eqn{\log(\psi_1 / \psi_0)}.}
+#'   \item{psi_1}{Estimated mean outcome under treatment in the naturally infected stratum.}
+#'   \item{psi_0}{Estimated mean outcome under control in the naturally infected stratum.}
+#' }
+#'
 #' @export
-#' 
-#' @return unadjusted estimates of growth effect in the naturally infected strata
 do_unadj_nat_inf <- function(
   data, Z_name, Y_name, S_name
 ){
@@ -24,15 +36,32 @@ do_unadj_nat_inf <- function(
   return(out)
 }
 
-#' Function for g-computation of counterfactual post-infection outcomes in the 
-#' naturally infected principal strata
-#' 
-#' @inheritParams vegrowth
-#' @param models A list of fitted models returned from \code{fit_models}
-#'  
+#' G-computation estimator for naturally infected principal stratum
+#'
+#' Computes covariate-adjusted estimates of counterfactual post-infection outcomes
+#' using g-computation under specified identification assumptions.
+#'
+#' @param data A data.frame containing observed data.
+#' @param models A named list of fitted nuisance models returned by \code{fit_models}.
+#' @param Z_name Character string specifying the treatment variable.
+#' @param X_name Character vector of covariate names.
+#' @param exclusion_restriction Logical; whether the exclusion restriction assumption is imposed.
+#' @param cross_world Logical; whether a cross-world independence assumption is imposed.
+#' @param two_part_model Logical; whether outcome regression is specified via a two-part model.
+#'
+#' @details
+#' At least one of \code{exclusion_restriction} or \code{cross_world} must be TRUE.
+#' Different identification strategies are used depending on these assumptions.
+#'
+#' @return A named numeric vector with elements:
+#' \describe{
+#'   \item{additive_effect}{Estimated difference \eqn{\psi_1 - \psi_0}.}
+#'   \item{log_multiplicative_effect}{Estimated log ratio \eqn{\log(\psi_1 / \psi_0)}.}
+#'   \item{psi_1}{Estimated mean outcome under treatment.}
+#'   \item{psi_0}{Estimated mean outcome under control.}
+#' }
+#'
 #' @export
-#' 
-#' @return g-comp estimate of growth effect in the naturally infected strata
 do_gcomp_nat_inf <- function(
   data, models, Z_name = NULL, X_name = NULL,
   exclusion_restriction = FALSE,
@@ -129,16 +158,29 @@ do_gcomp_nat_inf <- function(
   return(out)
 }
 
-#' Function for IPW of counterfactual post-infection outcomes in the 
-#' naturally infected principal strata
-#' 
-#' @param data dataset to predict on
-#' @param models list of pre-fit models needed for estimation
-#' @param S_name TODO
-#' @param Y_name TODO
-#' @param Z_name TODO
-#' 
-#' @return IPW estimate of growth effect in the naturally infected principal stratum
+#' Inverse probability weighting estimator for naturally infected principal stratum
+#'
+#' Computes estimates of counterfactual post-infection outcomes using inverse
+#' probability weighting (IPW).
+#'
+#' @param data A data.frame containing observed data.
+#' @param models A named list of fitted nuisance models.
+#' @param exclusion_restriction Logical; whether the exclusion restriction assumption is imposed.
+#' @param S_name Character string specifying the infection indicator.
+#' @param Y_name Character string specifying the outcome variable.
+#' @param Z_name Character string specifying the treatment variable.
+#'
+#' @details
+#' If \code{exclusion_restriction = FALSE}, estimation relies on cross-world
+#' assumptions. Otherwise, an alternative IPW representation is used.
+#'
+#' @return A named numeric vector with:
+#' \describe{
+#'   \item{additive_effect}{Estimated difference \eqn{\psi_1 - \psi_0}.}
+#'   \item{log_multiplicative_effect}{Estimated log ratio \eqn{\log(\psi_1 / \psi_0)}.}
+#'   \item{psi_1}{Estimated mean outcome under treatment.}
+#'   \item{psi_0}{Estimated mean outcome under control.}
+#' }
 do_ipw_nat_inf <- function(
     data, models,
     exclusion_restriction = FALSE,
@@ -197,20 +239,37 @@ do_ipw_nat_inf <- function(
   return(out)
 }
 
-#' Function for efficient AIPW estimator
-#' 
-#' @param data dataset to predict on
-#' @param models list of pre-fit models needed for estimation
-#' @param Y_name name of growth outcome variable, default Y
-#' @param Z_name name of vaccine treatment variable, default Z
-#' @param S_name name of infection variable, default Y
-#' @param return_se flag to return standard error, defualt FALSE
-#' @param exclusion_restriction boolean indicating whether an exclusion restriction is assumed
-#' @param cross_world boolean indicating whether a cross-world independence assumption is assumed
-#' 
+#' Augmented inverse probability weighted (AIPW) estimator
+#'
+#' Computes an efficient, doubly robust estimator of the growth effect in the
+#' naturally infected principal stratum.
+#'
+#' @param data A data.frame containing observed data.
+#' @param models A named list of fitted nuisance models.
+#' @param Y_name Character string specifying the outcome variable. Default is "Y".
+#' @param Z_name Character string specifying the treatment variable. Default is "Z".
+#' @param S_name Character string specifying the infection indicator. Default is "S".
+#' @param X_name Character vector of covariate names.
+#' @param exclusion_restriction Logical; whether the exclusion restriction assumption is imposed.
+#' @param cross_world Logical; whether a cross-world independence assumption is imposed.
+#' @param two_part_model Logical; whether outcome regression uses a two-part model.
+#' @param return_se Logical; if TRUE, returns standard errors and influence function outputs.
+#'
+#' @details
+#' This estimator is doubly robust: it is consistent if either the outcome model
+#' or the treatment/infection models are correctly specified.
+#'
+#' @return
+#' If \code{return_se = FALSE}, returns:
+#' \describe{
+#'   \item{additive_effect}{Estimated difference \eqn{\psi_1 - \psi_0}.}
+#'   \item{log_multiplicative_effect}{Estimated log ratio.}
+#' }
+#'
+#' If \code{return_se = TRUE}, additionally returns standard errors and estimates
+#' of \eqn{\psi_1} and \eqn{\psi_0}. The influence function matrix is stored as an attribute.
+#'
 #' @export
-#' 
-#' @return AIPW estimate of growth effect in naturally infected strata (+ standard error if return_se = TRUE)
 do_aipw_nat_inf <- function(
   data, models,
   exclusion_restriction = FALSE,
@@ -372,10 +431,10 @@ do_aipw_nat_inf <- function(
   
   # Additive effect
   efficient_growth_effect <- psi_1_aipw - psi_0_aipw
-  se <- sqrt(var(augmentation_1 - augmentation_0) / dim(data)[1])
+  se <- sqrt(stats::var(augmentation_1 - augmentation_0) / dim(data)[1])
   
-  se_psi_1 <- sqrt(var(augmentation_1) / dim(data)[1])
-  se_psi_0 <- sqrt(var(augmentation_0) / dim(data)[1])
+  se_psi_1 <- sqrt(stats::var(augmentation_1) / dim(data)[1])
+  se_psi_0 <- sqrt(stats::var(augmentation_0) / dim(data)[1])
   
   # Multiplicative effect (log scale)
   efficient_growth_effect_log_mult <- log(psi_1_aipw / psi_0_aipw)
@@ -384,7 +443,7 @@ do_aipw_nat_inf <- function(
   if_matrix <- cbind(augmentation_1, augmentation_0)
   colnames(if_matrix) <- c("augmentation_1", "augmentation_2")
   
-  cov_matrix <- cov(if_matrix) / dim(data)[1]
+  cov_matrix <- stats::cov(if_matrix) / dim(data)[1]
 
   gradient <- matrix(c(1 / psi_1_aipw, -1 / psi_0_aipw), ncol = 1)
   
@@ -405,18 +464,28 @@ do_aipw_nat_inf <- function(
   }
 }
 
-#' Function for efficient TMLE estimator
-#' 
-#' @param data dataset to predict on
-#' @param models list of pre-fit models needed for estimation
-#' @param Y_name name of growth outcome variable, default Y
-#' @param Z_name name of vaccine treatment variable, default Z
-#' @param S_name name of infection variable, default Y
-#' @param return_se flag to return standard error, defualt FALSE
-#' @param max_iter TODO 
-#' @param tol TOOD 
-#' 
-#' @return TMLE estimate of growth effect (+ standard error if return_se = TRUE)
+#' Targeted maximum likelihood estimator (TMLE)
+#'
+#' Computes a targeted maximum likelihood estimate of the growth effect in the
+#' naturally infected principal stratum.
+#'
+#' @param data A data.frame containing observed data.
+#' @param models A named list of fitted nuisance models.
+#' @param exclusion_restriction Logical; currently not supported.
+#' @param Y_name Character string specifying the outcome variable.
+#' @param Z_name Character string specifying the treatment variable.
+#' @param S_name Character string specifying the infection indicator.
+#' @param return_se Logical; whether to return standard errors.
+#' @param max_iter Maximum number of targeting iterations.
+#' @param tol Convergence tolerance for the efficient influence function.
+#'
+#' @details
+#' TMLE updates initial nuisance estimates via iterative targeting steps until
+#' the empirical mean of the efficient influence function is approximately zero.
+#'
+#' @return
+#' A named numeric vector containing the additive and log multiplicative effects.
+#' If \code{return_se = TRUE}, standard errors and component estimates are included.
 do_tmle_nat_inf <- function(
     data, models, 
     exclusion_restriction = FALSE,
@@ -527,7 +596,7 @@ do_tmle_nat_inf <- function(
         target_wt = target_wt,
         logit_mu_11_star_scale = logit_mu_11_star_scale
       )
-      target_fit <- suppressWarnings(glm(
+      target_fit <- suppressWarnings(stats::glm(
         Y_scale ~ offset(logit_mu_11_star_scale), 
         weight = target_wt,
         family = binomial(),
@@ -548,7 +617,7 @@ do_tmle_nat_inf <- function(
         target_wt = target_wt,
         logit_mu_01_star_scale = logit_mu_01_star_scale
       )
-      target_fit <- suppressWarnings(glm(
+      target_fit <- suppressWarnings(stats::glm(
         Y_scale ~ offset(logit_mu_01_star_scale), 
         weight = target_wt,
         family = binomial(),
@@ -570,7 +639,7 @@ do_tmle_nat_inf <- function(
         H1 = H1,
         logit_mu_10_star_scale = logit_mu_10_star_scale
       )
-      target_fit <- suppressWarnings(glm(
+      target_fit <- suppressWarnings(stats::glm(
         Y_scale ~ -1 + offset(logit_mu_10_star_scale) + H1, 
         weight = target_wt,
         family = binomial(),
@@ -595,8 +664,8 @@ do_tmle_nat_inf <- function(
       # R thinks they are not and tries to fit a glm, which blows up. setting 
       # H0 to a constant in these cases will remove the term from the model because
       # the model also includes an intercept
-      if(sd(H1) > 0 & sd(H0) > 0){
-        if(cor(H1, H0) > 0.99999){
+      if(stats::sd(H1) > 0 & stats::sd(H0) > 0){
+        if(stats::cor(H1, H0) > 0.99999){
           H0 <- 1
         }
       
@@ -607,10 +676,10 @@ do_tmle_nat_inf <- function(
           H0 = H0,
           logit_rho_0_star = logit_rho_0_star
         )
-        target_data <- setNames(target_data, c(S_name, names(target_data[-1])))
+        target_data <- stats::setNames(target_data, c(S_name, names(target_data[-1])))
         
         # include intercept so rho_bar_0_star is still mean(Y[Z == 0])
-        target_fit <- glm(
+        target_fit <- stats::glm(
           as.formula(paste0(S_name," ~ offset(logit_rho_0_star) + H1 + H0")), 
           family = binomial(),
           weight = target_wt,
@@ -643,10 +712,10 @@ do_tmle_nat_inf <- function(
         H1 = H1,
         logit_rho_1_star = logit_rho_1_star
       )
-      target_data <- setNames(target_data, c(S_name, names(target_data[-1])))
+      target_data <- stats::setNames(target_data, c(S_name, names(target_data[-1])))
       
       # include intercept so rho_bar_0_star is still mean(Y[Z == 0])
-      target_fit <- glm(
+      target_fit <- stats::glm(
         as.formula(paste0(S_name, " ~ -1 + offset(logit_rho_1_star) + H1")), 
         family = binomial(),
         weight = target_wt,
@@ -680,10 +749,10 @@ do_tmle_nat_inf <- function(
   tmle_ge_log_mult <- log(psi_1_star / psi_0_star)
   
   if(return_se){
-    se <- sqrt(var(phi_ge_data) / dim(data)[1])
+    se <- sqrt(stats::var(phi_ge_data) / dim(data)[1])
     
     if_matrix <- cbind(phi_1_data, phi_0_data)
-    cov_matrix <- cov(if_matrix) / dim(data)[1]
+    cov_matrix <- stats::cov(if_matrix) / dim(data)[1]
     # 1/psi_1, -1/psi_0
     gradient <- matrix(c(1 / psi_1_star, -1 / psi_0_star), ncol = 1)
     se_log_mult_eff <- sqrt(t(gradient) %*% cov_matrix %*% gradient)
@@ -702,19 +771,29 @@ do_tmle_nat_inf <- function(
   
 }
 
-#' Function for efficient AIPW estimator for sensitivity analysis
+#' Sensitivity analysis using AIPW estimator
+#'
+#' Performs sensitivity analysis for violations of cross-world assumptions using
+#' a parameter \eqn{\epsilon}.
+#'
+#' @param data A data.frame containing observed data.
+#' @param models A named list of fitted nuisance models.
+#' @param Y_name Character string specifying the outcome variable.
+#' @param Z_name Character string specifying the treatment variable.
+#' @param S_name Character string specifying the infection indicator.
+#' @param epsilon Numeric vector of sensitivity parameters.
+#' @param return_se Logical; whether to return standard errors.
+#'
+#' @return A list with class \code{"sens"} containing:
+#' \describe{
+#'   \item{epsilon}{Grid of sensitivity parameter values.}
+#'   \item{psi_1_epsilon}{Estimated \eqn{\psi_1} for each epsilon.}
+#'   \item{psi_0_aipw}{Baseline estimate of \eqn{\psi_0}.}
+#'   \item{additive_effect}{Additive effects across epsilon values.}
+#'   \item{log_multiplicative_effect}{Log multiplicative effects across epsilon values.}
+#' }
 #' 
-#' @param data dataset to predict on
-#' @param models list of pre-fit models needed for estimation
-#' @param Y_name name of growth outcome variable, default Y
-#' @param Z_name name of vaccine treatment variable, default Z
-#' @param S_name name of infection variable, default Y
-#' @param epislon a vector of values for the sensitivity parameter
-#' @param return_se flag to return standard error, defualt FALSE
-#' 
-#' 
-#' @return AIPW estimate of growth effect (+ standard error if return_se = TRUE)
-#' 
+#' @export
 do_sens_aipw_nat_inf <- function(data,
                          models,
                          Y_name = "Y",
@@ -736,9 +815,8 @@ do_sens_aipw_nat_inf <- function(data,
   
   # rho_bar_0 <- mean(sub_Z0[[S_name]])
   
-  data_0 <- data; data[[Z_name]] <- 0
-  data_1 <- data; data[[Z_name]] <- 1
-  
+  data_0 <- data; data_0[[Z_name]] <- 0
+  data_1 <- data; data_1[[Z_name]] <- 1
   
   rho_0_X <- simple_predict(models$fit_S_Z_X, newdata = data_0)
   mu_01_X <- simple_predict(models$fit_Y_Z0_S1_X, newdata = data)
@@ -767,9 +845,9 @@ do_sens_aipw_nat_inf <- function(data,
     mu_10_X <- predict(models$fit_Y_Z1_S0_X, newdata = data, type = "response")$pred
     rho_1_X <- predict(models$fit_S_Z_X, newdata = data_1, type = "response")$pred
   } else{
-    mu_11_X <- predict(models$fit_Y_Z1_S1_X, newdata = data, type = "response")
-    mu_10_X <- predict(models$fit_Y_Z1_S0_X, newdata = data, type = "response")
-    rho_1_X <- predict(models$fit_S_Z_X, newdata = data_1, type = "response")
+    mu_11_X <- stats::predict(models$fit_Y_Z1_S1_X, newdata = data, type = "response")
+    mu_10_X <- stats::predict(models$fit_Y_Z1_S0_X, newdata = data, type = "response")
+    rho_1_X <- stats::predict(models$fit_S_Z_X, newdata = data_1, type = "response")
   }
   
   psi_11_epsilon_X <- rho_1_X / rho_bar_0 * mu_11_X 
@@ -817,7 +895,7 @@ do_sens_aipw_nat_inf <- function(data,
     psi_1_eps - psi_0_aipw
   })
   se_epsilon <- lapply(augmentation_1_epsilon, function(augmentation_1_eps){
-    sqrt(var(augmentation_1_eps - augmentation_0) / dim(data)[1])
+    sqrt(stats::var(augmentation_1_eps - augmentation_0) / dim(data)[1])
   })
   
   # Multiplicative effect (log scale)
@@ -829,7 +907,7 @@ do_sens_aipw_nat_inf <- function(data,
     augmentation_1_eps = augmentation_1_epsilon, 
     function(augmentation_1_eps){
       if_matrix <- cbind(augmentation_1_eps, augmentation_0)
-      cov_matrix <- cov(if_matrix) / dim(data)[1]
+      cov_matrix <- stats::cov(if_matrix) / dim(data)[1]
       return(cov_matrix)
     }, SIMPLIFY =  FALSE
   )
@@ -840,7 +918,7 @@ do_sens_aipw_nat_inf <- function(data,
     psi_1_eps_aipw = psi_1_epsilon_aipw,
     function(augmentation_1_eps, psi_1_eps_aipw){
       if_matrix <- cbind(augmentation_1_eps, augmentation_0)
-      cov_matrix <- cov(if_matrix) / dim(data)[1]
+      cov_matrix <- stats::cov(if_matrix) / dim(data)[1]
       gradient <- matrix(c(1 / psi_1_eps_aipw, -1 / psi_0_aipw), ncol = 1)
       return(sqrt(t(gradient) %*% cov_matrix %*% gradient))
     })
@@ -871,17 +949,26 @@ do_sens_aipw_nat_inf <- function(data,
   return(out)
 }
 
-#' Function for bounds on naturally infected estimate without use of cross-world assumption
+#' Nonparametric bounds for naturally infected principal stratum
 #' 
-#' @param data dataframe containing dataset to use for analysis
-#' @param Y_name growth outcome variable name
-#' @param Z_name vaccination variable name
-#' @param S_name infection variable name
-#' @param family gaussian for continuous outcome, binomial for binary outcome
+#' @param data A data.frame containing observed data.
+#' @param Y_name Outcome variable name.
+#' @param Z_name Treatment variable name.
+#' @param S_name Infection indicator name.
+#' @param family Outcome type: "gaussian" (continuous) or "binomial" (binary).
 #' 
+#' @return A named numeric vector with:
+#' \describe{
+#'   \item{E_Y0__S0_1}{Observed mean outcome among unvaccinated infected.}
+#'   \item{E_Y1__S0_1_lower}{Lower bound.}
+#'   \item{E_Y1__S0_1_upper}{Upper bound.}
+#'   \item{additive_effect_lower}{Lower bound on additive effect.}
+#'   \item{additive_effect_upper}{Upper bound on additive effect.}
+#'   \item{mult_effect_lower}{Lower bound on multiplicative effect.}
+#'   \item{mult_effect_upper}{Upper bound on multiplicative effect.}
+#' }
+#'
 #' @export
-#' 
-#' @return list containing estimate of E[Y(0) | Y(0) = 1], bounds on E[Y(1) | Y(0) = 1], bounds on additive effect, bounds on multiplicative effect
 get_bound_nat_inf <- function(
     data, 
     Y_name = "Y",
@@ -898,7 +985,6 @@ get_bound_nat_inf <- function(
   # 1.2 rhobar_1_n
   rhobar_1_n <- mean(data[[S_name]][data[[Z_name]] == 1])
   
-  # get rid of this condition bc permutation test?
   if(rhobar_0_n > rhobar_1_n){
     # Step 2: mubar_11_n 
     mubar_11_n_num <- sum(data[[Y_name]]*data[[S_name]]*data[[Z_name]])
@@ -910,13 +996,13 @@ get_bound_nat_inf <- function(
       mubar_11_n <- mubar_11_n_num / mubar_11_n_denom
     }
     
-    # Step 3: q_n (relative size of protected? in (immune + protected) in vax)
+    # Step 3: q_n (relative size of protected in (immune + protected) in vax)
     q_n = 1 - (1 - rhobar_0_n) / (1 - rhobar_1_n)
     
     # Step 4: q_n^th quintiles of S__Z1_S0 (aka Y__Z1_S0, need to rename everything at some point)
     Y__Z1_S0 <- data[[Y_name]][which(data[[Z_name]] == 1 & data[[S_name]] == 0)]
-    q_nth_quintile <- quantile(Y__Z1_S0, probs = q_n) # NOTE failing here if condition on line 709 not met
-    one_minus_q_nth_quintile <- quantile(Y__Z1_S0, probs = 1 - q_n)
+    q_nth_quintile <- stats::quantile(Y__Z1_S0, probs = q_n) # NOTE failing here if condition on line 709 not met
+    one_minus_q_nth_quintile <- stats::quantile(Y__Z1_S0, probs = 1 - q_n)
     
     # Step 5: mubar_10_l,u_n 
     if(family == "gaussian"){
@@ -962,7 +1048,7 @@ get_bound_nat_inf <- function(
       
     }
     
-    # Step 6: final estimates of the bounds (just doing both each time for now??)
+    # Step 6: final estimates of the bounds (just doing both each time for now)
     
     l_n <- mubar_11_n * (rhobar_1_n / rhobar_0_n) + mubar_10_l_n * (1 - (rhobar_1_n / rhobar_0_n))
     u_n <- mubar_11_n * (rhobar_1_n / rhobar_0_n) + mubar_10_u_n * (1 - (rhobar_1_n / rhobar_0_n))
@@ -1007,18 +1093,34 @@ get_bound_nat_inf <- function(
 }
 
 
-#' Function for covariate-adjusted bounds on naturally infected estimate
-#' 
-#' @param data dataframe containing dataset to use for analysis
-#' @param X_name discrete-valued covariate name
-#' @param Y_name growth outcome variable name
-#' @param Z_name vaccination variable name
-#' @param S_name infection variable name
-#' @param family gaussian for continuous outcome, binomial for binary outcome
-#' 
+#' Covariate-adjusted bounds for naturally infected principal stratum
+#'
+#' Computes bounds on counterfactual outcomes within strata of a discrete
+#' covariate and aggregates across strata.
+#'
+#' @param data A data.frame containing observed data.
+#' @param X_name Name of discrete covariate used for stratification.
+#' @param Y_name Outcome variable name.
+#' @param Z_name Treatment variable name.
+#' @param S_name Infection indicator name.
+#' @param family Outcome type: "gaussian" or "binomial".
+#'
+#' @details
+#' Levels of \code{X_name} not observed in both treatment arms are pooled to
+#' ensure identifiability.
+#'
+#' @return A named numeric vector containing covariate-adjusted bounds for:
+#' \describe{
+#'   \item{E_Y0__S0_1}{Observed mean outcome among unvaccinated infected.}
+#'   \item{E_Y1__S0_1_lower}{Lower bound.}
+#'   \item{E_Y1__S0_1_upper}{Upper bound.}
+#'   \item{additive_effect_lower}{Lower bound on additive effect.}
+#'   \item{additive_effect_upper}{Upper bound on additive effect.}
+#'   \item{mult_effect_lower}{Lower bound on multiplicative effect.}
+#'   \item{mult_effect_upper}{Upper bound on multiplicative effect.}
+#' }
+#'
 #' @export
-#' 
-#' @return list containing estimate of E[Y(0) | Y(0) = 1], bounds on E[Y(1) | Y(0) = 1], bounds on additive effect, bounds on multiplicative effect
 get_cov_adj_bound_nat_inf <- function(
     data, 
     X_name = "X",
@@ -1093,264 +1195,3 @@ get_cov_adj_bound_nat_inf <- function(
 
   return(out)
 }
-
-# ------------------------------------------------------------------------------
-# Old or in-progress
-# ------------------------------------------------------------------------------
-
-#' Function for Hudgens-style bounds on effect that incorporate covariates
-#' 
-#' Currently assumes that the conditional mean of Y follows a linear model
-#' with Normal errors.
-#' 
-#' @param data dataframe containing dataset to use for analysis
-#' @param models list of pre-fit models needed for estimation
-#' @param family gaussian for continuous outcome Y, binomial for binary outcome
-#' @param lower_bound A boolean. If TRUE, then adds the smallest growth measures 
-#'    to the infected vaccines thereby yielding a lower
-#'    bound on the effect of interest. If FALSE, then adds the largest
-#'    growth measures to the infected vacccinees thereby yielding an upper
-#'    bound on the effect of interest.
-#' 
-#' @examples
-#' 
-#' n <- 1e4
-#' X <- sample(seq(-1,1), n, replace = TRUE)
-#' p_immune <- 0.5 + 0.25 * X
-#' p_doomed <- 0.1 + 0.05 * X
-#' p_helped <- 1 - (p_immune + p_doomed)
-#' ps <- mapply(
-#'   p_i = p_immune, p_d = p_doomed, p_h = p_helped, 
-#'   FUN = function(p_i, p_d, p_h){
-#'     sample(
-#'       c("immune", "doomed", "helped"), 
-#'       size = 1, prob = c(p_i, p_d, p_h)
-#'     )
-#'   }
-#' )
-#' 
-#' Z <- rbinom(n, 1, 0.5)
-#' Y0 <- ifelse(ps == "immune", 0, 1)
-#' Y1 <- ifelse(ps == "doomed", 1, 0)
-#' Y <- ifelse(Z == 1, Y1, Y0)
-#' Y1 <- 1*X - 0.5 * Y1 + rnorm(n, 0, 0.5)
-#' Y0 <- 1*X - 0.5 * Y0 + rnorm(n, 0, 0.5)
-#' Y <- ifelse(Z == 1, Y1, Y0)
-#' 
-#' marginal_effect <- mean(Y1 - Y0)
-#' ps_effect <- mean(Y1[Y0 == 1] - Y0[Y0 == 1])
-#' 
-#' data <- data.frame(X, Z, Y, Y)
-#' models <- fit_models(data)
-#' 
-#' get_adjusted_hudgens_stat(data, models, lower_bound = TRUE)
-#' # compare to unadjusted
-#' get_hudgens_stat(data, lower_bound = TRUE)
-#' 
-#' get_adjusted_hudgens_stat(data, models, lower_bound = FALSE)
-#' # compare to unadjusted
-#' get_hudgens_stat(data, lower_bound = FALSE)
-#' 
-#' # binary outcome
-#' Y_binary <- as.numeric(Y > 1)
-#' data <- data.frame(X, Z, Y, Y = Y_binary)
-#' models <- fit_models(data, family = binomial())
-#' get_adjusted_hudgens_stat(data, models, family = "binomial", lower_bound = TRUE)
-#' get_adjusted_hudgens_stat(data, models, family = "binomial", lower_bound = FALSE)
-#' 
-#' 
-#' @return Hudgens-style estimate of bound on effect in naturally infected
-
-# get_adjusted_hudgens_stat <- function(
-#     data, 
-#     models,
-#     family = "gaussian",
-#     lower_bound = TRUE
-# ){
-#   
-#   E_Y_Z0_S1_X <- predict(models$fit_Y_Z0_S1_X, newdata = data, type = "response")
-#   
-#   E_Y_Z1_S1_X <- predict(models$fit_Y_Z1_S1_X, newdata = data, type = "response")
-#   E_Y_Z1_S0_X <- predict(models$fit_Y_Z1_S0_X, newdata = data, type = "response")
-#   
-#   P_S1_Z1_X <- predict(models$fit_S_Z1_X, newdata = data, type = "response")
-#   P_S1_Z0_X <- predict(models$fit_S_Z0_X, newdata = data, type = "response")
-#   P_S0_Z1_X <- 1 - P_S1_Z1_X
-#   P_S0_Z0_X <- 1 - P_S1_Z0_X
-#   
-#   P_S1_Z0 <- mean(P_S1_Z0_X)
-#   
-#   VE_X <- 1 - ( P_S1_Z1_X / P_S1_Z0_X )
-#   if(any(VE_X < 0)){
-#     warning("Some condtional ZE estimates < 0 -- truncating these estimates at 0.")
-#   }
-#   VE_X[VE_X < 0] <- 0
-#   ZE_is_zero <- (VE_X == 0)
-#   ZE_is_nonzero <- (VE_X > 0)
-#   
-#   q_X_low <- 1 - P_S0_Z0_X / P_S0_Z1_X
-#   q_X_high <- 1 - q_X_low
-#   
-#   if(family == "gaussian"){
-#     sd_Y <- (mean(models$fit_Y_Z1_S0_X$residuals^2))^(1/2)
-#   }
-#   
-#   E_Y_Z1_S0_truncY_X <- E_Y_Z1_S0_X
-#   
-#   if(lower_bound){
-#     
-#     if(family == "gaussian"){
-#       # calculate mean of Normal given less than q_X_low
-#       beta_X <- (q_X_low - E_Y_Z1_S0_X) / sd_Y
-#       E_Y_Z1_S0_truncY_X[ZE_is_nonzero] <- E_Y_Z1_S0_X[ZE_is_nonzero] - sd_Y * dnorm(beta_X[ZE_is_nonzero]) / pnorm(beta_X[ZE_is_nonzero])
-#     }else{
-#       E_Y_Z1_S0_truncY_X[ZE_is_nonzero] <- as.numeric(E_Y_Z1_S0_X[ZE_is_nonzero] > q_X_low)
-#     }
-#   }else{
-#     
-#     if(family == "gaussian"){
-#       # calculate mean of Normal given greater than q_X_high
-#       alpha_X <- (q_X_high - E_Y_Z1_S0_X) / sd_Y
-#       E_Y_Z1_S0_truncY_X[ZE_is_nonzero] <- E_Y_Z1_S0_X[ZE_is_nonzero] + sd_Y * dnorm(alpha_X[ZE_is_nonzero]) / pnorm(alpha_X[ZE_is_nonzero], lower.tail = FALSE)
-#     }else{
-#       E_Y_Z1_S0_truncY_X[ZE_is_nonzero] <- as.numeric(E_Y_Z1_S0_X[ZE_is_nonzero] > q_X_high)
-#     }
-#   }
-#   
-#   E_Y_Z1_S0_X_bound <- E_Y_Z1_S1_X * (1 - VE_X) + E_Y_Z1_S0_truncY_X * VE_X
-#   
-#   effect <- mean(
-#     P_S1_Z0_X / P_S1_Z0 * (E_Y_Z1_S0_X_bound - E_Y_Z0_S1_X)
-#   )
-#   
-#   return(effect)
-#   
-# }
-
-#' Function to get chop-lump style test-statistic
-#' 
-#' @param data dataframe containing dataset to use for analysis
-#' @param Y_name growth outcome variable name
-#' @param Z_name vaccination variable name
-#' @param S_name infection variable name
-#' 
-#' @return dataframe with chop-lump style test statistics for mean in vax, mean in placebo
-#' 
-# get_chop_lump_statistic <- function(data,
-#                                     Y_name = "Y",
-#                                     Z_name = "Z",
-#                                     S_name = "S"){
-#   
-#   # 1. Yet number of people in relevant groups
-#   n_no_inf_plc <- sum(data[[S_name]] == 0 & data[[Z_name]] == 0)
-#   n_no_inf_vax <- sum(data[[S_name]] == 0 & data[[Z_name]] == 1)
-#   n_plc <- sum(data[[Z_name]] == 0)
-#   n_vax <- sum(data[[Z_name]] == 1)
-#   n_inf_plc <- n_plc - n_no_inf_plc
-#   n_inf_vax <- n_vax - n_no_inf_vax
-#   
-#   # 2. Chop based on group with more infections
-#   if(n_inf_plc > n_inf_vax){
-#     
-#     # placebo - everyone is infected, simple mean
-#     mean_Y_plc <- mean(data[[Y_name]][data[[Z_name]] == 0 & data[[S_name]] == 1])
-#     
-#     # vaccinated - weighted mean
-#     mean_Y_noinf_vax <- mean(data[[Y_name]][data[[Z_name]] == 1 & data[[S_name]] == 0])
-#     mean_Y_inf_vax <- mean(data[[Y_name]][data[[Z_name]] == 1 & data[[S_name]] == 1])
-#     
-#     mean_Y_vax  <- mean_Y_noinf_vax * ((n_inf_plc - n_inf_vax) / n_inf_plc) +
-#       mean_Y_inf_vax * (n_inf_vax / n_inf_plc)
-#     
-#   } else if (n_inf_plc < n_inf_vax){
-#     
-#     # vaccinated - everyone is infected, simple mean
-#     mean_Y_vax <- mean(data[[Y_name]][data[[Z_name]] == 1 & data[[S_name]] == 1])
-#     
-#     # placebo - weighted mean
-#     mean_Y_noinf_plc <- mean(data[[Y_name]][data[[Z_name]] == 0 & data[[S_name]] == 0])
-#     mean_Y_inf_plc <- mean(data[[Y_name]][data[[Z_name]] == 0 & data[[S_name]] == 1])
-#     
-#     mean_Y_plc  <- mean_Y_noinf_plc * ((n_inf_vax - n_inf_plc) / n_inf_vax) +
-#       mean_Y_inf_plc * (n_inf_plc / n_inf_vax)
-#     
-#   } else{
-#     
-#     # vaccinated - everyone is infected, simple mean
-#     mean_Y_vax <- mean(data[[Y_name]][data[[Z_name]] == 1 & data[[S_name]] == 1])
-#     
-#     # placebo - everyone is infected, simple mean
-#     mean_Y_plc <- mean(data[[Y_name]][data[[Z_name]] == 0 & data[[S_name]] == 1])
-#     
-#   }
-#   
-#   return(data.frame(mean_Y_plc = mean_Y_plc,
-#                     mean_Y_vax = mean_Y_vax))
-# }
-
-#' Function to do permutation test for chop-lump style test-statistics
-#' 
-#' @param data dataframe containing dataset to use for analysis
-#' @param Y_name growth outcome variable name
-#' @param Z_name vaccination variable name
-#' @param S_name infection variable name
-#' @param n_permutations number of permutations to complete
-#' 
-#' @return chop lump test statistic
-# do_chop_lump_test <- function(data, 
-#                               Y_name = "Y",
-#                               Z_name = "Z",
-#                               S_name = "S",
-#                               n_permutations = 1e4){
-#   
-#   original_means <- get_chop_lump_statistic(data, 
-#                                             Y_name = Y_name,
-#                                             Z_name = Z_name,
-#                                             S_name = S_name)
-#   ## Permutation approach
-#   null_means <- vector("list", length = n_permutations)
-#   for(i in 1:n_permutations){
-#     data_shuffle <- data
-#     data_shuffle[[Z_name]] <- sample(data_shuffle[[Z_name]])
-#     
-#     null_means[[i]] <- get_chop_lump_statistic(data_shuffle,
-#                                                Y_name = Y_name,
-#                                                Z_name = Z_name,
-#                                                S_name = S_name)
-#   }
-#   
-#   null_df <- do.call(rbind, null_means)
-#   
-#   ## Hypothesis test
-#   observed_diff <- original_means$mean_Y_vax - original_means$mean_Y_plc
-#   null_df$mean_diff <- null_df$mean_Y_vax - null_df$mean_Y_plc
-#   
-#   out <- list(
-#     obs_diff = observed_diff,
-#     null_diffs = null_df$mean_diff,
-#     pval = mean(null_df$mean_diff > observed_diff)
-#   )
-#   
-#   class(out) <- "chop_lump_res"
-#   return(out)
-# }
-
-
-#' Helper function to plot chop-lump test results
-#' 
-#' @param out chop_lump_res object to plot
-#' 
-#' @return A histogram plot with the distribution of test statistics under the null hypothesis,
-#' and a vertical line showing the observed test statistic.
-
-# plot.chop_lump_res <- function(out){
-#   hist(
-#     out$null_diffs,
-#     xlab = "Test statistic",
-#     xlim = range(c(out$null_diffs, out$observed_diff)),
-#     main = "Distribution of test statistic under null"
-#   )
-#   abline(v = out$observed_diff, col = 2, lwd = 2)
-# }
-
-

@@ -2,7 +2,7 @@
 % Please edit documentation in R/estimate_nat_inf.R
 \name{do_aipw_nat_inf}
 \alias{do_aipw_nat_inf}
-\title{Function for efficient AIPW estimator}
+\title{Augmented inverse probability weighted (AIPW) estimator}
 \usage{
 do_aipw_nat_inf(
   data,
@@ -18,25 +18,41 @@ do_aipw_nat_inf(
 )
 }
 \arguments{
-\item{data}{dataset to predict on}
+\item{data}{A data.frame containing observed data.}
 
-\item{models}{list of pre-fit models needed for estimation}
+\item{models}{A named list of fitted nuisance models.}
 
-\item{exclusion_restriction}{boolean indicating whether an exclusion restriction is assumed}
+\item{exclusion_restriction}{Logical; whether the exclusion restriction assumption is imposed.}
 
-\item{cross_world}{boolean indicating whether a cross-world independence assumption is assumed}
+\item{cross_world}{Logical; whether a cross-world independence assumption is imposed.}
 
-\item{Y_name}{name of growth outcome variable, default Y}
+\item{Y_name}{Character string specifying the outcome variable. Default is "Y".}
 
-\item{Z_name}{name of vaccine treatment variable, default Z}
+\item{Z_name}{Character string specifying the treatment variable. Default is "Z".}
 
-\item{S_name}{name of infection variable, default Y}
+\item{S_name}{Character string specifying the infection indicator. Default is "S".}
 
-\item{return_se}{flag to return standard error, defualt FALSE}
+\item{X_name}{Character vector of covariate names.}
+
+\item{return_se}{Logical; if TRUE, returns standard errors and influence function outputs.}
+
+\item{two_part_model}{Logical; whether outcome regression uses a two-part model.}
 }
 \value{
-AIPW estimate of growth effect in naturally infected strata (+ standard error if return_se = TRUE)
+If \code{return_se = FALSE}, returns:
+\describe{
+\item{additive_effect}{Estimated difference \eqn{\psi_1 - \psi_0}.}
+\item{log_multiplicative_effect}{Estimated log ratio.}
+}
+
+If \code{return_se = TRUE}, additionally returns standard errors and estimates
+of \eqn{\psi_1} and \eqn{\psi_0}. The influence function matrix is stored as an attribute.
 }
 \description{
-Function for efficient AIPW estimator
+Computes an efficient, doubly robust estimator of the growth effect in the
+naturally infected principal stratum.
+}
+\details{
+This estimator is doubly robust: it is consistent if either the outcome model
+or the treatment/infection models are correctly specified.
 }

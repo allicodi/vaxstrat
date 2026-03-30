@@ -2,7 +2,7 @@
 % Please edit documentation in R/fit_models.R
 \name{fit_models}
 \alias{fit_models}
-\title{Function to fit all models needed by various estimators}
+\title{Fit parametric models required for estimation procedures}
 \usage{
 fit_models(
   data,
@@ -24,27 +24,67 @@ fit_models(
 )
 }
 \arguments{
-\item{data}{dataset used to fit models}
+\item{data}{A data.frame containing the observed data.}
 
-\item{Y_name}{name of growth outcome variable, default G}
+\item{Y_name}{Character; name of the outcome variable. Default is \code{"Y"}.}
 
-\item{Z_name}{name of vaccine treatment variable, default Z}
+\item{Z_name}{Character; name of the treatment variable. Default is \code{"Z"}.}
 
-\item{X_name}{character vector containing name(s) of covariates, default X}
+\item{X_name}{Character vector; names of baseline covariates. Default is \code{"X"}.}
 
-\item{S_name}{name of infection variable, default Y}
+\item{S_name}{Character; name of the intermediate (e.g., infection) variable. Default is \code{"S"}.}
 
-\item{estimand}{character vector with name(s) of estimands of interest; "nat_inf" = naturally infected, "doomed" = doomed, "pop" = marginal/population-level}
+\item{estimand}{Character vector specifying estimands of interest. Options include:
+\code{"nat_inf"} (naturally infected), \code{"doomed"}, and \code{"pop"} (population-level).}
 
-\item{S_X_model}{optional specify model to be used for fitting infection on covariates, otherwise infection on all covariates}
+\item{method}{Character vector specifying estimation methods. Options include
+\code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"tmle"}, \code{"bound"}, and \code{"sens"}.}
 
-\item{family}{family for outcome model, defaults to gaussian for growth}
+\item{exclusion_restriction}{Logical; whether exclusion restriction is assumed.}
 
-\item{Y_X_model}{optional specify model to be used for fitting growth on covariates, otherwise growth on all covariates}
+\item{cross_world}{Logical; whether cross-world assumptions are invoked.}
+
+\item{Y_Z_X_model}{Optional formula for outcome regression \eqn{E[Y \mid Z, X]}.
+If NULL, defaults to \code{Y ~ Z + X}.}
+
+\item{Y_X_S1_model}{Optional formula for outcome regression among \eqn{S = 1}.
+Defaults to \code{Y ~ X}.}
+
+\item{Y_X_S0_model}{Optional formula for outcome regression among \eqn{S = 0}.
+Defaults to \code{Y ~ X}.}
+
+\item{S_X_model}{Optional formula for \eqn{P(S = 1 \mid X)}. Defaults to \code{S ~ X}.}
+
+\item{S_Z_X_model}{Optional formula for \eqn{P(S = 1 \mid Z, X)} (used for sensitivity analysis).}
+
+\item{Z_X_model}{Formula for \eqn{P(Z = 1 \mid X)}. Default is intercept-only (\code{Z ~ 1}).}
+
+\item{family}{Family for outcome regression models (passed to \code{glm}). Default is \code{"gaussian"}.}
 }
 \value{
-list with models needed for specified estimators
+A named list of fitted \code{glm} objects. The exact components depend on the
+requested estimands and methods, and may include:
+\describe{
+\item{fit_Y_Z_X}{Outcome model \eqn{E[Y \mid Z, X]}}
+\item{fit_Y_Z1_S1_X, fit_Y_Z1_S0_X, fit_Y_Z0_S1_X, fit_Y_Z0_S0_X}{Outcome models stratified by treatment and intermediate variable}
+\item{fit_S_Z1_X, fit_S_Z0_X}{Models for \eqn{P(S = 1 \mid Z, X)} fitted separately by treatment}
+\item{fit_S_Z_X}{Model for \eqn{P(S = 1 \mid Z, X)} (pooled; used for sensitivity analysis)}
+\item{fit_Z_X}{Model for \eqn{P(Z = 1 \mid X)}}
+}
 }
 \description{
-Function to fit all models needed by various estimators
+Fits all regression models needed for the specified estimands and estimation
+methods using generalized linear models (\code{glm}). The function constructs and
+fits only the models required based on the requested estimands, methods, and
+assumptions (e.g., exclusion restriction, cross-world assumptions).
+}
+\details{
+Models are fit only when required by the specified estimand–method combination.
+For example:
+\itemize{
+\item Outcome regression (\code{fit_Y_Z_X}) is used by g-computation, AIPW, and TMLE.
+\item Treatment models (\code{fit_Z_X}) are used by weighting-based estimators.
+\item Stratified outcome and intermediate models are used for principal
+stratification estimands (e.g., \code{"nat_inf"} and \code{"doomed"}).
+}
 }

@@ -1,23 +1,63 @@
-#' Function for one bootstrap sample
+#' Single bootstrap replicate for vaxstrat estimators
 #'
-#' @param data original data to bootstrap
-#' @param Y_name growth outcome variable name
-#' @param Z_name vaccination variable name
-#' @param X_name covariate name(s)
-#' @param S_name infection variable name
-#' @param est character vector of names of estimators to use for growth effect
-#' @param ml boolean to use SuperLearner models, default FALSE
-#' @param Y_X_S1_model optional specify model to be used for fitting growth on covariates in the infected, otherwise growth on all covariates
-#' @param Y_X_S0_model optional specify model to be used for fitting growth on covariates in the uninfected, otherwise growth on all covariates
-#' @param S_X_model optional specify model to be used for fitting infection on covariates, otherwise infection on all covariates
-#' @param Y_X_library optional specify SuperLearner libraries for model fitting growth on covariates, default glm
-#' @param S_X_library optional specify SuperLearner libraries for model fitting infection on covariates, default glm
-#' @param family family for outcome model, defaults to gaussian for growth
-#' @param v_folds number of cross validation folds for SuperLearner, default 3
-#' @param effect_dir direction of beneficial effect, defaults to "positive" for beneficial outcome. Used for one-side tests of bounds.  
-#' @param epsilon a vector of values for the sensitivity parameter
-#' 
-#' @returns list containing results for specified estimators on single bootstrap sample
+#' Generates one bootstrap sample from the observed data and computes
+#' specified estimators of growth effects within principal strata
+#' (e.g., naturally infected, doomed, and population).
+#'
+#' @param data A data.frame containing the observed data.
+#' @param Y_name Character string specifying the outcome (growth) variable.
+#' @param Z_name Character string specifying the treatment (vaccination) variable.
+#' @param X_name Character vector of covariate names.
+#' @param S_name Character string specifying the infection indicator.
+#' @param estimand Character vector indicating which estimands to compute.
+#'   Options include `"nat_inf"`, `"doomed"`, and `"pop"`.
+#' @param method Character vector of estimation methods to use. Options include
+#'   `"gcomp"`, `"ipw"`, `"aipw"`, `"tmle"`, `"bound"`, `"cov_adj_bound"`, and `"sens"`.
+#' @param exclusion_restriction Logical vector indicating whether to impose the
+#'   exclusion restriction assumption. Results are returned separately for each value.
+#' @param cross_world Logical vector indicating whether to impose the cross-world
+#'   assumption. Results are returned separately.
+#' @param ml Logical; if TRUE, uses SuperLearner-based models. If FALSE (default),
+#'   parametric models (e.g., GLMs) are used.
+#' @param Y_Z_X_model Optional model specification for outcome regression on treatment
+#'   and covariates.
+#' @param Y_X_S1_model Optional model for outcome regression among infected individuals.
+#' @param Y_X_S0_model Optional model for outcome regression among uninfected individuals.
+#' @param S_X_model Optional model for infection regression on covariates.
+#' @param S_Z_X_model Optional model for infection regression on treatment and covariates.
+#' @param Z_X_model Optional model for treatment regression on covariates.
+#' @param Y_Z_X_library SuperLearner libraries for outcome regression on treatment + covariates.
+#' @param Y_X_library SuperLearner libraries for outcome regression on covariates.
+#' @param S_X_library SuperLearner libraries for infection regression.
+#' @param S_Z_X_library SuperLearner libraries for infection regression on treatment + covariates.
+#' @param Z_X_library SuperLearner libraries for treatment regression.
+#' @param family Outcome family (default `"gaussian"` for continuous growth outcomes).
+#' @param v_folds Number of cross-validation folds for SuperLearner (default 3).
+#' @param effect_dir Direction of beneficial effect (`"positive"` or `"negative"`).
+#'   Used for one-sided inference in bound-based methods.
+#' @param epsilon Numeric vector of sensitivity parameters for sensitivity analysis.
+#' @param max_resample Maximum number of attempts to resample if the bootstrap sample
+#'   violates the monotonicity condition (i.e., infection risk in vaccinated exceeds
+#'   unvaccinated).
+#' @param return_se Logical; if FALSE, returns influence-function–based standard errors
+#'   (if available). If TRUE, standard errors are obtained via bootstrap aggregation.
+#' @param two_part_model Logical; whether to use a two-part outcome model.
+#'
+#' @details
+#' A bootstrap sample is drawn with replacement from the observed data.
+#' To enforce a monotonicity-type condition, the sample is resampled up to
+#' `max_resample` times if the infection rate among vaccinated individuals
+#' exceeds that among unvaccinated individuals.
+#'
+#' Estimators are computed separately for each requested estimand and method.
+#' Results are returned as a nested list indexed by estimand and estimator name.
+#'
+#' @returns A nested list with elements corresponding to each estimand
+#' (`"nat_inf"`, `"doomed"`, `"pop"`). Each contains sublists for each estimator,
+#' including point estimates, test statistics, p-values, and (optionally)
+#' standard errors or sensitivity analysis results.
+#'
+#' @export
 one_boot <- function(
     data,
     Y_name = "Y",
@@ -75,7 +115,7 @@ one_boot <- function(
   if(ml){
     
     if(any(method %in% c("aipw", "tmle", "sens")) & return_se == FALSE){
-      boot_ml_models <- vegrowth::fit_ml_models(data = boot_data, 
+      boot_ml_models <- vaxstrat::fit_ml_models(data = boot_data, 
                                                  estimand = estimand,
                                                  method = method, 
                                                  exclusion_restriction = exclusion_restriction,
@@ -94,7 +134,7 @@ one_boot <- function(
     } 
     
     if(any(method %in% c("gcomp", "ipw"))){
-      boot_models <- vegrowth::fit_models(data = boot_data, 
+      boot_models <- vaxstrat::fit_models(data = boot_data, 
                                           estimand = estimand,
                                           method = method, 
                                           exclusion_restriction = exclusion_restriction,
@@ -115,7 +155,7 @@ one_boot <- function(
   } else{
     # GLMS for all
     if(any(method %in% c("gcomp", "ipw", "aipw", "tmle", "sens"))){
-      boot_models <- vegrowth::fit_models(data = boot_data, 
+      boot_models <- vaxstrat::fit_models(data = boot_data, 
                                           estimand = estimand,
                                           method = method, 
                                           exclusion_restriction = exclusion_restriction,
@@ -260,29 +300,56 @@ one_boot <- function(
 
 }
 
-#' Function to replicate n_boot bootstrap samples and get bootstrap standard error
-#' 
-#' @param data original data to bootstrap
-#' @param Y_name growth outcome variable name
-#' @param Z_name vaccination variable name
-#' @param X_name covariate name(s)
-#' @param S_name infection variable name
-#' @param n_boot number of bootstrap replicates
-#' @param est character vector of names of estimators to use for growth effect
-#' @param ml boolean to use SuperLearner models, default FALSE
-#' @param Y_Z_X_model optional specify model to be used for fitting growth on vaccine + covariates, otherwise growth on all covariates
-#' @param Y_X_S1_model optional specify model to be used for fitting growth on covariates in the infected, otherwise growth on all covariates
-#' @param Y_X_S0_model optional specify model to be used for fitting growth on covariates in the uninfected, otherwise growth on all covariates
-#' @param S_X_model optional specify model to be used for fitting infection on covariates, otherwise infection on all covariates
-#' @param Y_Z_X_library optional specify SuperLearner libraries for model fitting growth on covariates + vaccine, default glm
-#' @param Y_X_library optional specify SuperLearner libraries for model fitting growth on covariates, default glm
-#' @param S_X_library optional specify SuperLearner libraries for model fitting infection on covariates, default glm
-#' @param family family for outcome model, defaults to gaussian for growth
-#' @param v_folds number of cross validation folds for SuperLearner, default 3
-#' @param effect_dir direction of beneficial effect, defaults to "positive" for beneficial outcome. Used for one-side tests of bounds.  
-#' @param epsilon a vector of values for the sensitivity parameter
-#' 
-#' @returns list containing bootstrap se and 95% CI bounds for estimators specified in est
+#' Bootstrap standard errors and confidence intervals for vaxstrat estimators
+#'
+#' Repeats the bootstrap procedure using [one_boot()] to compute bootstrap-based
+#' standard errors and confidence intervals for specified estimators.
+#'
+#' @param data A data.frame containing the observed data.
+#' @param Y_name Character string specifying the outcome (growth) variable.
+#' @param Z_name Character string specifying the treatment (vaccination) variable.
+#' @param X_name Character vector of covariate names.
+#' @param S_name Character string specifying the infection indicator.
+#' @param n_boot Integer; number of bootstrap replicates (default 1000).
+#' @param estimand Character vector indicating which estimands to compute.
+#' @param method Character vector of estimation methods to use.
+#' @param exclusion_restriction Logical vector indicating whether to impose the
+#'   exclusion restriction assumption.
+#' @param cross_world Logical vector indicating whether to impose the cross-world assumption.
+#' @param ml Logical; if TRUE, uses SuperLearner models.
+#' @param Y_Z_X_model Optional model specification for outcome regression.
+#' @param Y_X_S1_model Optional model for outcome among infected.
+#' @param Y_X_S0_model Optional model for outcome among uninfected.
+#' @param S_X_model Optional model for infection regression.
+#' @param S_Z_X_model Optional model for infection regression on treatment + covariates.
+#' @param Z_X_model Optional model for treatment regression.
+#' @param Y_Z_X_library SuperLearner libraries for outcome regression.
+#' @param Y_X_library SuperLearner libraries for covariate adjustment.
+#' @param S_X_library SuperLearner libraries for infection regression.
+#' @param S_Z_X_library SuperLearner libraries for infection regression on treatment + covariates.
+#' @param Z_X_library SuperLearner libraries for treatment regression.
+#' @param family Outcome family (default `"gaussian"`).
+#' @param v_folds Number of cross-validation folds for SuperLearner.
+#' @param effect_dir Direction of beneficial effect.
+#' @param epsilon Numeric vector of sensitivity parameters.
+#' @param return_se Logical; if FALSE, bootstrap is used to compute standard errors.
+#' @param two_part_model Logical; whether to use a two-part outcome model.
+#'
+#' @details
+#' This function calls [one_boot()] repeatedly (`n_boot` times) to generate
+#' bootstrap replicates of each estimator. Bootstrap standard errors and
+#' confidence intervals are computed using the empirical distribution of
+#' bootstrap estimates.
+#'
+#' Results are aggregated separately by estimand and method. For sensitivity
+#' analyses and bound estimators, specialized bootstrap aggregation functions
+#' are used.
+#'
+#' @returns A nested list with the same structure as a single call to
+#' [one_boot()], but augmented with bootstrap-based standard errors and
+#' confidence intervals (stored under `boot_se`).
+#'
+#' @export
 bootstrap_estimates <- function(
     data, 
     Y_name = "Y",

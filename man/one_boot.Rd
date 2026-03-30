@@ -2,7 +2,7 @@
 % Please edit documentation in R/bootstrap.R
 \name{one_boot}
 \alias{one_boot}
-\title{Function for one bootstrap sample}
+\title{Single bootstrap replicate for vaxstrat estimators}
 \usage{
 one_boot(
   data,
@@ -36,41 +36,89 @@ one_boot(
 )
 }
 \arguments{
-\item{data}{original data to bootstrap}
+\item{data}{A data.frame containing the observed data.}
 
-\item{Y_name}{growth outcome variable name}
+\item{Y_name}{Character string specifying the outcome (growth) variable.}
 
-\item{Z_name}{vaccination variable name}
+\item{Z_name}{Character string specifying the treatment (vaccination) variable.}
 
-\item{X_name}{covariate name(s)}
+\item{X_name}{Character vector of covariate names.}
 
-\item{S_name}{infection variable name}
+\item{S_name}{Character string specifying the infection indicator.}
 
-\item{ml}{boolean to use SuperLearner models, default FALSE}
+\item{estimand}{Character vector indicating which estimands to compute.
+Options include \code{"nat_inf"}, \code{"doomed"}, and \code{"pop"}.}
 
-\item{Y_X_S1_model}{optional specify model to be used for fitting growth on covariates in the infected, otherwise growth on all covariates}
+\item{method}{Character vector of estimation methods to use. Options include
+\code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"tmle"}, \code{"bound"}, \code{"cov_adj_bound"}, and \code{"sens"}.}
 
-\item{Y_X_S0_model}{optional specify model to be used for fitting growth on covariates in the uninfected, otherwise growth on all covariates}
+\item{exclusion_restriction}{Logical vector indicating whether to impose the
+exclusion restriction assumption. Results are returned separately for each value.}
 
-\item{S_X_model}{optional specify model to be used for fitting infection on covariates, otherwise infection on all covariates}
+\item{cross_world}{Logical vector indicating whether to impose the cross-world
+assumption. Results are returned separately.}
 
-\item{Y_X_library}{optional specify SuperLearner libraries for model fitting growth on covariates, default glm}
+\item{ml}{Logical; if TRUE, uses SuperLearner-based models. If FALSE (default),
+parametric models (e.g., GLMs) are used.}
 
-\item{S_X_library}{optional specify SuperLearner libraries for model fitting infection on covariates, default glm}
+\item{Y_Z_X_model}{Optional model specification for outcome regression on treatment
+and covariates.}
 
-\item{family}{family for outcome model, defaults to gaussian for growth}
+\item{Y_X_S1_model}{Optional model for outcome regression among infected individuals.}
 
-\item{v_folds}{number of cross validation folds for SuperLearner, default 3}
+\item{Y_X_S0_model}{Optional model for outcome regression among uninfected individuals.}
 
-\item{effect_dir}{direction of beneficial effect, defaults to "positive" for beneficial outcome. Used for one-side tests of bounds.}
+\item{S_X_model}{Optional model for infection regression on covariates.}
 
-\item{epsilon}{a vector of values for the sensitivity parameter}
+\item{S_Z_X_model}{Optional model for infection regression on treatment and covariates.}
 
-\item{est}{character vector of names of estimators to use for growth effect}
+\item{Z_X_model}{Optional model for treatment regression on covariates.}
+
+\item{Y_Z_X_library}{SuperLearner libraries for outcome regression on treatment + covariates.}
+
+\item{Y_X_library}{SuperLearner libraries for outcome regression on covariates.}
+
+\item{S_X_library}{SuperLearner libraries for infection regression.}
+
+\item{S_Z_X_library}{SuperLearner libraries for infection regression on treatment + covariates.}
+
+\item{Z_X_library}{SuperLearner libraries for treatment regression.}
+
+\item{family}{Outcome family (default \code{"gaussian"} for continuous growth outcomes).}
+
+\item{v_folds}{Number of cross-validation folds for SuperLearner (default 3).}
+
+\item{effect_dir}{Direction of beneficial effect (\code{"positive"} or \code{"negative"}).
+Used for one-sided inference in bound-based methods.}
+
+\item{epsilon}{Numeric vector of sensitivity parameters for sensitivity analysis.}
+
+\item{max_resample}{Maximum number of attempts to resample if the bootstrap sample
+violates the monotonicity condition (i.e., infection risk in vaccinated exceeds
+unvaccinated).}
+
+\item{return_se}{Logical; if FALSE, returns influence-function–based standard errors
+(if available). If TRUE, standard errors are obtained via bootstrap aggregation.}
+
+\item{two_part_model}{Logical; whether to use a two-part outcome model.}
 }
 \value{
-list containing results for specified estimators on single bootstrap sample
+A nested list with elements corresponding to each estimand
+(\code{"nat_inf"}, \code{"doomed"}, \code{"pop"}). Each contains sublists for each estimator,
+including point estimates, test statistics, p-values, and (optionally)
+standard errors or sensitivity analysis results.
 }
 \description{
-Function for one bootstrap sample
+Generates one bootstrap sample from the observed data and computes
+specified estimators of growth effects within principal strata
+(e.g., naturally infected, doomed, and population).
+}
+\details{
+A bootstrap sample is drawn with replacement from the observed data.
+To enforce a monotonicity-type condition, the sample is resampled up to
+\code{max_resample} times if the infection rate among vaccinated individuals
+exceeds that among unvaccinated individuals.
+
+Estimators are computed separately for each requested estimand and method.
+Results are returned as a nested list indexed by estimand and estimator name.
 }

@@ -1,7 +1,19 @@
-#' Helper function to predict from a model appropriately irrespective of class
-#' @param model A fitted model of class \code{'glm'} or \code{'SuperLearner'}
-#' @param newdata A \code{data.frame} to obtain predictions on
-#' @return Predictions from \code{model} on \code{newdata}
+#' Unified prediction helper for fitted models
+#'
+#' Generates predictions from supported model objects in a consistent way.
+#'
+#' @param model A fitted model object of class \code{"glm"} or \code{"SuperLearner"}.
+#' @param newdata A \code{data.frame} containing covariate values at which predictions are computed.
+#'
+#' @details
+#' This function standardizes prediction calls across supported model classes:
+#' \itemize{
+#'   \item For \code{"glm"} objects, predictions are obtained using \code{type = "response"}.
+#'   \item For \code{"SuperLearner"} objects, predictions are extracted from the \code{$pred} slot.
+#' }
+#'
+#' @return A numeric vector of predicted values corresponding to \code{newdata}.
+#'
 simple_predict <- function(model, newdata){
   if(!any(c("glm", "SuperLearner") %in% class(model))){
     stop("method only guaranteed to work correctly with glm or super learner")
@@ -16,13 +28,29 @@ simple_predict <- function(model, newdata){
 
 
 
-#' Helper function to make dataframe from bootstrap results
+#' Convert bootstrap results into a tidy data frame
 #'
-#' @param boot_estimates list of n_boot bootstrap estimates from one_boot
-#' @param estimand estimand of interest
-#' @param method method of interest
-#' 
-#' @returns data frame with bootstrap results for point estimates & bounds
+#' Transforms a list of bootstrap outputs into a single data frame for downstream
+#' summarization and inference.
+#'
+#' @param boot_estimates A list of bootstrap results, where each element corresponds
+#'   to one bootstrap replicate (e.g., output from \code{one_boot}).
+#' @param estimand Character string specifying the estimand of interest
+#'   (e.g., \code{"nat_inf"}, \code{"pop"}, \code{"doomed"}).
+#' @param method Character string specifying the estimation method
+#'   (e.g., \code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"bound"}, \code{"sens"}).
+#'
+#' @details
+#' Each bootstrap replicate is expected to be a nested list indexed by
+#' \code{estimand} and \code{method}. Failed or missing replicates are skipped.
+#'
+#' @return A data.frame containing stacked bootstrap results, with additional columns:
+#' \describe{
+#'   \item{boot_id}{Bootstrap replicate index.}
+#'   \item{estimand}{Estimand label.}
+#'   \item{method}{Estimation method label.}
+#' }
+#'
 make_boot_df <- function(boot_estimates, estimand = "nat_inf", method = "gcomp") {
   res_list <- lapply(seq_along(boot_estimates), function(i) {
     boot_res <- boot_estimates[[i]]
@@ -52,37 +80,66 @@ make_boot_df <- function(boot_estimates, estimand = "nat_inf", method = "gcomp")
   data.frame(do.call(rbind, res_list))
 }
 
-#' Helper function to get SE and 95% CI for additive and multiplicative effects - point estimates
+#' Bootstrap standard errors and confidence intervals (point estimates)
 #'
-#' @param estimand estimand of interest
-#' @param method method of interest
-#' 
-#' @returns dataframe with bootstrap standard error and confidence intervals on additive and multiplicative scales for point estimates
+#' Computes bootstrap-based standard errors and percentile confidence intervals
+#' for additive and multiplicative effects.
+#'
+#' @param boot_estimates A list of bootstrap results.
+#' @param estimand Character string specifying the estimand of interest.
+#' @param method Character string specifying the estimation method.
+#'
+#' @return A data.frame with:
+#' \describe{
+#'   \item{se_additive}{Standard error of the additive effect.}
+#'   \item{lower_ci_additive}{2.5th percentile of additive effect.}
+#'   \item{upper_ci_additive}{97.5th percentile of additive effect.}
+#'   \item{se_log_mult}{Standard error of the log multiplicative effect.}
+#'   \item{lower_ci_mult}{Lower bound of multiplicative effect (exponentiated).}
+#'   \item{upper_ci_mult}{Upper bound of multiplicative effect (exponentiated).}
+#'   \item{se_psi_1}{Standard error of \eqn{\psi_1}.}
+#'   \item{se_psi_0}{Standard error of \eqn{\psi_0}.}
+#' }
+#'
 get_boot_se <- function(boot_estimates, estimand = "nat_inf", method = "gcomp"){
   boot_df <- make_boot_df(boot_estimates = boot_estimates,
                           estimand = estimand,
                           method = method)
   
   data.frame(se_additive = sd(boot_df$additive_effect),
-             lower_ci_additive = quantile(boot_df$additive_effect, 0.025),
-             upper_ci_additive = quantile(boot_df$additive_effect, 0.975),
+             lower_ci_additive = stats::quantile(boot_df$additive_effect, 0.025),
+             upper_ci_additive = stats::quantile(boot_df$additive_effect, 0.975),
              se_log_mult = sd(boot_df$log_multiplicative_effect),
-             lower_ci_mult = exp(quantile(boot_df$log_multiplicative_effect, 0.025, na.rm = TRUE)), # added NA rm true for some bootstrap replicates
-             upper_ci_mult = exp(quantile(boot_df$log_multiplicative_effect, 0.975, na.rm = TRUE)),
+             lower_ci_mult = exp(stats::quantile(boot_df$log_multiplicative_effect, 0.025, na.rm = TRUE)), # added NA rm true for some bootstrap replicates
+             upper_ci_mult = exp(stats::quantile(boot_df$log_multiplicative_effect, 0.975, na.rm = TRUE)),
              se_psi_1 = sd(boot_df$psi_1),
-             lower_ci_psi_1 = quantile(boot_df$psi_1, 0.025),
-             upper_ci_psi_1 = quantile(boot_df$psi_1, 0.975),
+             lower_ci_psi_1 = stats::quantile(boot_df$psi_1, 0.025),
+             upper_ci_psi_1 = stats::quantile(boot_df$psi_1, 0.975),
              se_psi_0 = sd(boot_df$psi_0),
-             lower_ci_psi_0 = quantile(boot_df$psi_0, 0.025),
-             upper_ci_psi_0 = quantile(boot_df$psi_0, 0.975))
+             lower_ci_psi_0 = stats::quantile(boot_df$psi_0, 0.025),
+             upper_ci_psi_0 = stats::quantile(boot_df$psi_0, 0.975))
 }
 
-#' Helper function to get SE and 95% CI for additive and multiplicative effects - bounds
+#' Bootstrap inference for bounds
 #'
-#' @param estimand estimand of interest
-#' @param method method of interest
-#' 
-#' @returns dataframe with bootstrap standard error and confidence intervals on additive and multiplicative scales for bounds
+#' Computes bootstrap-based standard errors and confidence intervals for lower
+#' and upper bounds on additive and multiplicative effects.
+#'
+#' @param boot_estimates A list of bootstrap results.
+#' @param estimand Character string specifying the estimand.
+#' @param method Character string specifying the method (typically \code{"bound"}).
+#'
+#' @return A data.frame containing:
+#' \describe{
+#'   \item{number_NA_replicates}{Number of bootstrap replicates with missing bounds.}
+#'   \item{se_additive_lower}{Standard error of lower bound (additive scale).}
+#'   \item{se_additive_upper}{Standard error of upper bound (additive scale).}
+#'   \item{lower_ci_additive_lower}{Lower CI for additive lower bound.}
+#'   \item{upper_ci_additive_upper}{Upper CI for additive upper bound.}
+#'   \item{se_log_mult_lower}{Standard error of log lower multiplicative bound.}
+#'   \item{se_log_mult_upper}{Standard error of log upper multiplicative bound.}
+#' }
+#'
 get_boot_se_bound <- function(boot_estimates, estimand = "nat_inf", method = "bound"){
   boot_df <- make_boot_df(boot_estimates = boot_estimates,
                           estimand = estimand,
@@ -92,31 +149,45 @@ get_boot_se_bound <- function(boot_estimates, estimand = "nat_inf", method = "bo
   
   data.frame(number_NA_replicates = number_NA,
              se_additive_lower = sd(boot_df$additive_effect_lower, na.rm = TRUE),
-             lower_ci_additive_lower = quantile(boot_df$additive_effect_lower, 0.025, na.rm = TRUE),
-             upper_ci_additive_lower = quantile(boot_df$additive_effect_lower, 0.975, na.rm = TRUE),
+             lower_ci_additive_lower = stats::quantile(boot_df$additive_effect_lower, 0.025, na.rm = TRUE),
+             upper_ci_additive_lower = stats::quantile(boot_df$additive_effect_lower, 0.975, na.rm = TRUE),
              se_additive_upper = sd(boot_df$additive_effect_upper, na.rm = TRUE),
-             lower_ci_additive_upper = quantile(boot_df$additive_effect_upper, 0.025, na.rm = TRUE),
-             upper_ci_additive_upper = quantile(boot_df$additive_effect_upper, 0.975, na.rm = TRUE),
+             lower_ci_additive_upper = stats::quantile(boot_df$additive_effect_upper, 0.025, na.rm = TRUE),
+             upper_ci_additive_upper = stats::quantile(boot_df$additive_effect_upper, 0.975, na.rm = TRUE),
              #original
              #se_mult_lower = sd(boot_df$mult_effect_lower),
              #new
              se_log_mult_lower = sd(log(boot_df$mult_effect_lower), na.rm = TRUE),
-             lower_ci_mult_lower = quantile(boot_df$mult_effect_lower, 0.025, na.rm = TRUE),
-             upper_ci_mult_lower = quantile(boot_df$mult_effect_lower, 0.975, na.rm = TRUE),
+             lower_ci_mult_lower = stats::quantile(boot_df$mult_effect_lower, 0.025, na.rm = TRUE),
+             upper_ci_mult_lower = stats::quantile(boot_df$mult_effect_lower, 0.975, na.rm = TRUE),
              #original
              #se_mult_upper = sd(boot_df$mult_effect_upper),
              #new
              se_log_mult_upper = sd(log(boot_df$mult_effect_upper), na.rm = TRUE),
-             lower_ci_mult_upper = quantile(boot_df$mult_effect_upper, 0.025, na.rm = TRUE),
-             upper_ci_mult_upper = quantile(boot_df$mult_effect_upper, 0.975, na.rm = TRUE))
+             lower_ci_mult_upper = stats::quantile(boot_df$mult_effect_upper, 0.025, na.rm = TRUE),
+             upper_ci_mult_upper = stats::quantile(boot_df$mult_effect_upper, 0.975, na.rm = TRUE))
 }
 
-#' Helper function to get SE and 95% CI for additive and multiplicative effects - bounds
+#' Bootstrap inference for sensitivity analysis
 #'
-#' @param estimand estimand of interest
-#' @param method method of interest
-#' 
-#' @returns dataframe with bootstrap standard error and confidence intervals on additive and multiplicative scales for each epsilon
+#' Computes bootstrap standard errors and confidence intervals for each value
+#' of the sensitivity parameter \eqn{\epsilon}.
+#'
+#' @param boot_estimates A list of bootstrap results.
+#' @param estimand Character string specifying the estimand.
+#' @param method Character string specifying the method (typically \code{"sens"}).
+#'
+#' @return A data.frame with one row per \eqn{\epsilon}, containing:
+#' \describe{
+#'   \item{epsilon}{Sensitivity parameter value.}
+#'   \item{se_additive}{Standard error of additive effect.}
+#'   \item{lower_ci_additive}{Lower CI for additive effect.}
+#'   \item{upper_ci_additive}{Upper CI for additive effect.}
+#'   \item{se_mult}{Standard error of log multiplicative effect.}
+#'   \item{lower_ci_mult}{Lower CI (multiplicative scale).}
+#'   \item{upper_ci_mult}{Upper CI (multiplicative scale).}
+#' }
+#'
 get_boot_se_sens <- function(boot_estimates, estimand = "nat_inf", method = "sens"){
   boot_df <- make_boot_df(boot_estimates = boot_estimates,
                           estimand = estimand,
@@ -130,39 +201,53 @@ get_boot_se_sens <- function(boot_estimates, estimand = "nat_inf", method = "sen
     # QUESTION handling NAs 
     boot_res_list[[e]] <- data.frame(epsilon = epsilon[e],
                                      se_additive = sd(boot_df$additive_effect[boot_df$epsilon == epsilon[e]], na.rm = TRUE),
-                                     lower_ci_additive = quantile(boot_df$additive_effect[boot_df$epsilon == epsilon[e]], 0.025, na.rm = TRUE),
-                                     upper_ci_additive = quantile(boot_df$additive_effect[boot_df$epsilon == epsilon[e]], 0.975, na.rm = TRUE),
+                                     lower_ci_additive = stats::quantile(boot_df$additive_effect[boot_df$epsilon == epsilon[e]], 0.025, na.rm = TRUE),
+                                     upper_ci_additive = stats::quantile(boot_df$additive_effect[boot_df$epsilon == epsilon[e]], 0.975, na.rm = TRUE),
                                      se_mult = sd(boot_df$log_multiplicative_effect[boot_df$epsilon == epsilon[e]], na.rm = TRUE),
-                                     lower_ci_mult = exp(quantile(boot_df$log_multiplicative_effect[boot_df$epsilon == epsilon[e]], 0.025, na.rm = TRUE)),
-                                     upper_ci_mult = exp(quantile(boot_df$log_multiplicative_effect[boot_df$epsilon == epsilon[e]], 0.975, na.rm = TRUE)))
+                                     lower_ci_mult = exp(stats::quantile(boot_df$log_multiplicative_effect[boot_df$epsilon == epsilon[e]], 0.025, na.rm = TRUE)),
+                                     upper_ci_mult = exp(stats::quantile(boot_df$log_multiplicative_effect[boot_df$epsilon == epsilon[e]], 0.975, na.rm = TRUE)))
   }
   
   return(do.call(rbind, boot_res_list))
   
 }
 
-#' Example simulated dataset based on the PROVIDE study
-#' 
-#' @format A data frame with X rows and Y variables:
+#' Example dataset inspired by the PROVIDE study
+#'
+#' A simulated dataset based on PROVIDE study data for analysis of vaccine on antibiotic use
+#'
+#' @format A data frame with multiple observations and the following variables:
 #' \describe{
-#'   \item{wk10_haz}{Height-for-age Z-score at 10 weeks of age (numeric)}
-#'   \item{gender}{Infant gender, either `"Male"` or `"Female"` (character)}
-#'   \item{num_hh_sleep}{Number of people sleeping in the household (integer)}
-#'   \item{rotaarm}{Indicator for assignment to rotavirus vaccination arm (0 = control, 1 = vaccine) (integer)}
-#'   \item{rotaepi}{Indicator for rotavirus episode during follow-up (0 = no, 1 = yes) (integer)}
-#'   \item{any_abx_wk52}{Any antibiotic usage reported through 52 weeks of age (0 = no, 1 = yes) (integer)}
+#'   \item{wk10_haz}{Height-for-age Z-score at 10 weeks (numeric).}
+#'   \item{gender}{Infant gender ("Male", "Female").}
+#'   \item{num_hh_sleep}{Number of individuals sleeping in the household (integer).}
+#'   \item{rotaarm}{Vaccination indicator (0 = control, 1 = vaccine).}
+#'   \item{rotaepi}{Infection indicator (0 = no episode, 1 = episode).}
+#'   \item{any_abx_wk52}{Any antibiotic use by 52 weeks (0/1).}
 #' }
+#'
+#' @source Simulated data loosely based on the PROVIDE study.
 "provide"
 
-#' Print the output of a \code{"vegrowth"} object
-#' 
-#' @param x An \code{"vegrowth"} object.
-#' @param type format to print results in, group by 'estimand' (default) or group by 'effect' (additive and multiplicative) 
-#' @param ... other arguments (not used)
-#' 
-#' @method print vegrowth
+#' Print method for \code{"vaxstrat"} objects
+#'
+#' Displays formatted estimates and confidence intervals for growth effects.
+#'
+#' @param x An object of class \code{"vaxstrat"}.
+#' @param scale Character string specifying effect scale:
+#'   \code{"additive"} (default) or \code{"multiplicative"}.
+#' @param ... Additional arguments (not used).
+#'
+#' @details
+#' Results are grouped by estimand (e.g., naturally infected, doomed, population)
+#' and estimation method. Confidence intervals are drawn either from bootstrap
+#' summaries (if available) or normal approximations.
+#'
+#' @return Invisibly returns \code{x}.
+#'
+#' @method print vaxstrat
 #' @export
-print.vegrowth <- function(x, scale = "additive", ...) {
+print.vaxstrat <- function(x, scale = "additive", ...) {
   
   # Helper to print one row
   print_row <- function(label, method, est, lower, upper) {
@@ -284,15 +369,26 @@ print.vegrowth <- function(x, scale = "additive", ...) {
   invisible(x)
 }
 
-  
-#' Plot method for sens objects
+
+#' Plot sensitivity analysis results
 #'
-#' @param object An object of class "sens"
-#' @param se Logical; whether to include error bars
-#' @param effect_type Character; either "additive" or "multiplicative"
-#' @param ... Additional arguments passed to plot (not used here)
-#' 
+#' Produces a line plot of estimated effects across values of the sensitivity
+#' parameter \eqn{\epsilon}.
+#'
+#' @param object An object of class \code{"sens"}.
+#' @param se Logical; if TRUE, includes 95\% confidence bands.
+#' @param effect_type Character string specifying effect scale:
+#'   \code{"additive"} or \code{"multiplicative"}.
+#' @param ... Additional arguments (not used).
+#'
+#' @details
+#' Confidence intervals are constructed using normal approximations based on
+#' bootstrap standard errors.
+#'
+#' @return Produces a \code{ggplot2} plot and returns it invisibly.
 #' @export
+#' 
+#' @method plot sens
 plot.sens <- function(
   object, se = TRUE, effect_type = c("additive", "multiplicative"), 
   ...

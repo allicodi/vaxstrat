@@ -2,7 +2,7 @@
 % Please edit documentation in R/permutation.R
 \name{permutation_bound_doomed}
 \alias{permutation_bound_doomed}
-\title{Function for permutation test of bounds in doomed}
+\title{Permutation test for bounds in the doomed principal stratum}
 \usage{
 permutation_bound_doomed(
   data,
@@ -15,23 +15,45 @@ permutation_bound_doomed(
 )
 }
 \arguments{
-\item{data}{dataframe containing dataset to use for analysis}
+\item{data}{A \code{data.frame} containing the dataset.}
 
-\item{Y_name}{growth outcome variable name}
+\item{Y_name}{Character; name of the outcome variable. Default is \code{"Y"}.}
 
-\item{Z_name}{vaccination variable name}
+\item{Z_name}{Character; name of the treatment variable. Default is \code{"Z"}.}
 
-\item{S_name}{infection variable name}
+\item{S_name}{Character; name of the infection variable. Default is \code{"S"}.}
 
-\item{n_permutations}{number of permutations to run, default 1000}
+\item{n_permutations}{Integer; number of permutations to perform. Default is \code{1000}.}
 
-\item{family}{defaults to gaussian for continuous outcome}
+\item{family}{Character; outcome type. Either \code{"gaussian"} (continuous)
+or \code{"binomial"} (binary). Default is \code{"gaussian"}.}
 
-\item{effect_dir}{direction of beneficial effect, defaults to "positive" for beneficial outcome. Used for one-side tests of bounds.}
+\item{effect_dir}{Character; direction of beneficial effect. Either
+\code{"positive"} (default) or \code{"negative"}. Determines which bound is used
+for the one-sided hypothesis test.}
 }
 \value{
-list with original estimate, null estimates for n_permutations, and p_value for one-sided test based on effect_dir
+A list with class \code{"permutation_bound_doomed"} containing:
+\describe{
+\item{original_est}{Named vector of bound estimates from the observed data.}
+\item{null_est}{Matrix of bound estimates from permuted datasets.}
+\item{pval_bound}{One-sided permutation p-value.}
+}
 }
 \description{
-Function for permutation test of bounds in doomed
+Performs a permutation-based hypothesis test for bounds on the treatment effect
+in the doomed principal stratum. Treatment assignment is permuted to generate
+the null distribution of the bound-based estimator.
+}
+\details{
+The permutation test constructs a null distribution by randomly permuting the
+treatment assignment variable (\code{Z}). The observed bound is compared to this
+null distribution using a one-sided test:
+\itemize{
+\item If \code{effect_dir = "positive"}, the lower bound is tested against 0.
+\item If \code{effect_dir = "negative"}, the upper bound is tested against 0.
+}
+
+Permutation replicates that yield undefined bounds (e.g., when identifying
+assumptions are not satisfied) are treated as not supporting the alternative.
 }

@@ -2,18 +2,31 @@
 % Please edit documentation in R/utils.R
 \name{get_boot_se}
 \alias{get_boot_se}
-\title{Helper function to get SE and 95\% CI for additive and multiplicative effects - point estimates}
+\title{Bootstrap standard errors and confidence intervals (point estimates)}
 \usage{
 get_boot_se(boot_estimates, estimand = "nat_inf", method = "gcomp")
 }
 \arguments{
-\item{estimand}{estimand of interest}
+\item{boot_estimates}{A list of bootstrap results.}
 
-\item{method}{method of interest}
+\item{estimand}{Character string specifying the estimand of interest.}
+
+\item{method}{Character string specifying the estimation method.}
 }
 \value{
-dataframe with bootstrap standard error and confidence intervals on additive and multiplicative scales for point estimates
+A data.frame with:
+\describe{
+\item{se_additive}{Standard error of the additive effect.}
+\item{lower_ci_additive}{2.5th percentile of additive effect.}
+\item{upper_ci_additive}{97.5th percentile of additive effect.}
+\item{se_log_mult}{Standard error of the log multiplicative effect.}
+\item{lower_ci_mult}{Lower bound of multiplicative effect (exponentiated).}
+\item{upper_ci_mult}{Upper bound of multiplicative effect (exponentiated).}
+\item{se_psi_1}{Standard error of \eqn{\psi_1}.}
+\item{se_psi_0}{Standard error of \eqn{\psi_0}.}
+}
 }
 \description{
-Helper function to get SE and 95\% CI for additive and multiplicative effects - point estimates
+Computes bootstrap-based standard errors and percentile confidence intervals
+for additive and multiplicative effects.
 }

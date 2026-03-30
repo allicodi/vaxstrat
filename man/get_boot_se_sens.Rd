@@ -2,18 +2,30 @@
 % Please edit documentation in R/utils.R
 \name{get_boot_se_sens}
 \alias{get_boot_se_sens}
-\title{Helper function to get SE and 95\% CI for additive and multiplicative effects - bounds}
+\title{Bootstrap inference for sensitivity analysis}
 \usage{
 get_boot_se_sens(boot_estimates, estimand = "nat_inf", method = "sens")
 }
 \arguments{
-\item{estimand}{estimand of interest}
+\item{boot_estimates}{A list of bootstrap results.}
 
-\item{method}{method of interest}
+\item{estimand}{Character string specifying the estimand.}
+
+\item{method}{Character string specifying the method (typically \code{"sens"}).}
 }
 \value{
-dataframe with bootstrap standard error and confidence intervals on additive and multiplicative scales for each epsilon
+A data.frame with one row per \eqn{\epsilon}, containing:
+\describe{
+\item{epsilon}{Sensitivity parameter value.}
+\item{se_additive}{Standard error of additive effect.}
+\item{lower_ci_additive}{Lower CI for additive effect.}
+\item{upper_ci_additive}{Upper CI for additive effect.}
+\item{se_mult}{Standard error of log multiplicative effect.}
+\item{lower_ci_mult}{Lower CI (multiplicative scale).}
+\item{upper_ci_mult}{Upper CI (multiplicative scale).}
+}
 }
 \description{
-Helper function to get SE and 95\% CI for additive and multiplicative effects - bounds
+Computes bootstrap standard errors and confidence intervals for each value
+of the sensitivity parameter \eqn{\epsilon}.
 }

@@ -2,18 +2,30 @@
 % Please edit documentation in R/utils.R
 \name{get_boot_se_bound}
 \alias{get_boot_se_bound}
-\title{Helper function to get SE and 95\% CI for additive and multiplicative effects - bounds}
+\title{Bootstrap inference for bounds}
 \usage{
 get_boot_se_bound(boot_estimates, estimand = "nat_inf", method = "bound")
 }
 \arguments{
-\item{estimand}{estimand of interest}
+\item{boot_estimates}{A list of bootstrap results.}
 
-\item{method}{method of interest}
+\item{estimand}{Character string specifying the estimand.}
+
+\item{method}{Character string specifying the method (typically \code{"bound"}).}
 }
 \value{
-dataframe with bootstrap standard error and confidence intervals on additive and multiplicative scales for bounds
+A data.frame containing:
+\describe{
+\item{number_NA_replicates}{Number of bootstrap replicates with missing bounds.}
+\item{se_additive_lower}{Standard error of lower bound (additive scale).}
+\item{se_additive_upper}{Standard error of upper bound (additive scale).}
+\item{lower_ci_additive_lower}{Lower CI for additive lower bound.}
+\item{upper_ci_additive_upper}{Upper CI for additive upper bound.}
+\item{se_log_mult_lower}{Standard error of log lower multiplicative bound.}
+\item{se_log_mult_upper}{Standard error of log upper multiplicative bound.}
+}
 }
 \description{
-Helper function to get SE and 95\% CI for additive and multiplicative effects - bounds
+Computes bootstrap-based standard errors and confidence intervals for lower
+and upper bounds on additive and multiplicative effects.
 }

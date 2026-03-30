@@ -2,20 +2,27 @@
 % Please edit documentation in R/estimate_doomed.R
 \name{do_gcomp_doomed}
 \alias{do_gcomp_doomed}
-\title{Function for g-computation of counterfactual post-infection outcomes in the
-doomed principal strata}
+\title{G-computation for the doomed principal stratum}
 \usage{
 do_gcomp_doomed(data, models)
 }
 \arguments{
-\item{data}{dataset to predict on}
+\item{data}{A \code{data.frame} containing the dataset to predict on.}
 
-\item{models}{list of pre-fit models needed for estimation}
+\item{models}{A list of pre-fitted models as returned by \code{fit_models()}
+or \code{fit_ml_models()}.}
 }
 \value{
-g-comp estimate of growth effect in the doomed strata
+A named numeric vector containing:
+\describe{
+\item{additive_effect}{Estimated additive effect (difference in means).}
+\item{log_multiplicative_effect}{Estimated log multiplicative effect.}
+\item{psi_1}{Estimated mean counterfactual outcome under treatment (Z = 1).}
+\item{psi_0}{Estimated mean counterfactual outcome under control (Z = 0).}
+}
 }
 \description{
-Function for g-computation of counterfactual post-infection outcomes in the
-doomed principal strata
+Estimates the post-infection outcomes among individuals who would be
+infected regardless of treatment assignment (the "doomed" principal stratum)
+using g-computation.
 }

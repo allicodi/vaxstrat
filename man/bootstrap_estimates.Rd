@@ -2,7 +2,7 @@
 % Please edit documentation in R/bootstrap.R
 \name{bootstrap_estimates}
 \alias{bootstrap_estimates}
-\title{Function to replicate n_boot bootstrap samples and get bootstrap standard error}
+\title{Bootstrap standard errors and confidence intervals for vaxstrat estimators}
 \usage{
 bootstrap_estimates(
   data,
@@ -36,47 +36,79 @@ bootstrap_estimates(
 )
 }
 \arguments{
-\item{data}{original data to bootstrap}
+\item{data}{A data.frame containing the observed data.}
 
-\item{Y_name}{growth outcome variable name}
+\item{Y_name}{Character string specifying the outcome (growth) variable.}
 
-\item{Z_name}{vaccination variable name}
+\item{Z_name}{Character string specifying the treatment (vaccination) variable.}
 
-\item{X_name}{covariate name(s)}
+\item{X_name}{Character vector of covariate names.}
 
-\item{S_name}{infection variable name}
+\item{S_name}{Character string specifying the infection indicator.}
 
-\item{n_boot}{number of bootstrap replicates}
+\item{n_boot}{Integer; number of bootstrap replicates (default 1000).}
 
-\item{ml}{boolean to use SuperLearner models, default FALSE}
+\item{estimand}{Character vector indicating which estimands to compute.}
 
-\item{Y_Z_X_model}{optional specify model to be used for fitting growth on vaccine + covariates, otherwise growth on all covariates}
+\item{method}{Character vector of estimation methods to use.}
 
-\item{Y_X_S1_model}{optional specify model to be used for fitting growth on covariates in the infected, otherwise growth on all covariates}
+\item{exclusion_restriction}{Logical vector indicating whether to impose the
+exclusion restriction assumption.}
 
-\item{Y_X_S0_model}{optional specify model to be used for fitting growth on covariates in the uninfected, otherwise growth on all covariates}
+\item{cross_world}{Logical vector indicating whether to impose the cross-world assumption.}
 
-\item{S_X_model}{optional specify model to be used for fitting infection on covariates, otherwise infection on all covariates}
+\item{ml}{Logical; if TRUE, uses SuperLearner models.}
 
-\item{Y_Z_X_library}{optional specify SuperLearner libraries for model fitting growth on covariates + vaccine, default glm}
+\item{Y_Z_X_model}{Optional model specification for outcome regression.}
 
-\item{Y_X_library}{optional specify SuperLearner libraries for model fitting growth on covariates, default glm}
+\item{Y_X_S1_model}{Optional model for outcome among infected.}
 
-\item{S_X_library}{optional specify SuperLearner libraries for model fitting infection on covariates, default glm}
+\item{Y_X_S0_model}{Optional model for outcome among uninfected.}
 
-\item{family}{family for outcome model, defaults to gaussian for growth}
+\item{S_X_model}{Optional model for infection regression.}
 
-\item{v_folds}{number of cross validation folds for SuperLearner, default 3}
+\item{S_Z_X_model}{Optional model for infection regression on treatment + covariates.}
 
-\item{effect_dir}{direction of beneficial effect, defaults to "positive" for beneficial outcome. Used for one-side tests of bounds.}
+\item{Z_X_model}{Optional model for treatment regression.}
 
-\item{epsilon}{a vector of values for the sensitivity parameter}
+\item{Y_Z_X_library}{SuperLearner libraries for outcome regression.}
 
-\item{est}{character vector of names of estimators to use for growth effect}
+\item{Y_X_library}{SuperLearner libraries for covariate adjustment.}
+
+\item{S_X_library}{SuperLearner libraries for infection regression.}
+
+\item{S_Z_X_library}{SuperLearner libraries for infection regression on treatment + covariates.}
+
+\item{Z_X_library}{SuperLearner libraries for treatment regression.}
+
+\item{family}{Outcome family (default \code{"gaussian"}).}
+
+\item{v_folds}{Number of cross-validation folds for SuperLearner.}
+
+\item{effect_dir}{Direction of beneficial effect.}
+
+\item{epsilon}{Numeric vector of sensitivity parameters.}
+
+\item{return_se}{Logical; if FALSE, bootstrap is used to compute standard errors.}
+
+\item{two_part_model}{Logical; whether to use a two-part outcome model.}
 }
 \value{
-list containing bootstrap se and 95\% CI bounds for estimators specified in est
+A nested list with the same structure as a single call to
+\code{\link[=one_boot]{one_boot()}}, but augmented with bootstrap-based standard errors and
+confidence intervals (stored under \code{boot_se}).
 }
 \description{
-Function to replicate n_boot bootstrap samples and get bootstrap standard error
+Repeats the bootstrap procedure using \code{\link[=one_boot]{one_boot()}} to compute bootstrap-based
+standard errors and confidence intervals for specified estimators.
+}
+\details{
+This function calls \code{\link[=one_boot]{one_boot()}} repeatedly (\code{n_boot} times) to generate
+bootstrap replicates of each estimator. Bootstrap standard errors and
+confidence intervals are computed using the empirical distribution of
+bootstrap estimates.
+
+Results are aggregated separately by estimand and method. For sensitivity
+analyses and bound estimators, specialized bootstrap aggregation functions
+are used.
 }

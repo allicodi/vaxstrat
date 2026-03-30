@@ -1,10 +1,22 @@
-#' Function for g-computation of counterfactual post-infection outcomes in the 
-#' doomed principal strata
+#' G-computation for the doomed principal stratum
+#'
+#' Estimates the post-infection outcomes among individuals who would be
+#' infected regardless of treatment assignment (the "doomed" principal stratum)
+#' using g-computation.
+#'
+#' @param data A \code{data.frame} containing the dataset to predict on.
+#' @param models A list of pre-fitted models as returned by \code{fit_models()}
+#' or \code{fit_ml_models()}.
+#'
+#' @returns A named numeric vector containing:
+#' \describe{
+#'   \item{additive_effect}{Estimated additive effect (difference in means).}
+#'   \item{log_multiplicative_effect}{Estimated log multiplicative effect.}
+#'   \item{psi_1}{Estimated mean counterfactual outcome under treatment (Z = 1).}
+#'   \item{psi_0}{Estimated mean counterfactual outcome under control (Z = 0).}
+#' }
 #' 
-#' @param data dataset to predict on
-#' @param models list of pre-fit models needed for estimation
-#' 
-#' @returns g-comp estimate of growth effect in the doomed strata
+#' @export
 do_gcomp_doomed <- function(data, models){
   
   # Psi_1 = E[P(S=1 | Z = 0, X) / P(S= 1 | Z = 0) * E[Y | Z=1, X] ]
@@ -29,13 +41,27 @@ do_gcomp_doomed <- function(data, models){
   return(out)
 }
 
-#' Function for IPW of counterfactual post-infection outcomes in the 
-#' doomed principal stratum
+#' IPW estimator for counterfactual outcomes in the doomed principal stratum
+#'
+#' Estimates the average counterfactual outcomes among individuals in the doomed
+#' principal stratum using inverse probability weighting (IPW).
+#'
+#' @param data A \code{data.frame} containing the dataset to predict on.
+#' @param models A list of pre-fitted models as returned by \code{fit_models()}
+#' or \code{fit_ml_models()}.
+#' @param S_name Character; name of the infection indicator variable.
+#' @param Y_name Character; name of the outcome variable.
+#' @param Z_name Character; name of the treatment variable.
+#'
+#' @returns A named numeric vector containing:
+#' \describe{
+#'   \item{additive_effect}{Estimated additive effect.}
+#'   \item{log_multiplicative_effect}{Estimated log multiplicative effect.}
+#'   \item{psi_1}{Estimated mean counterfactual outcome under treatment.}
+#'   \item{psi_0}{Estimated mean counterfactual outcome under control.}
+#' }
 #' 
-#' @param data dataset to predict on
-#' @param models list of pre-fit models needed for estimation
-#' 
-#' @returns IPW estimate of growth effect in the doomed principal stratum
+#' @export
 do_ipw_doomed <- function(
     data, models,
     S_name, Y_name, Z_name
@@ -70,16 +96,40 @@ do_ipw_doomed <- function(
   return(out)
 }
 
-#' Function for efficient AIPW estimator in the doomed stratum
+#' Augmented IPW estimator for doomed principal stratum
+#'
+#' Computes an efficient augmented inverse probability weighted (AIPW) estimator
+#' for the vaccine effect in the doomed principal stratum.
+#' This estimator is doubly robust: it is consistent if either the outcome model
+#' or the treatment/infection models are correctly specified.
+#'
+#' @param data A \code{data.frame} containing the dataset to predict on.
+#' @param models A list of pre-fitted models as returned by \code{fit_models()}
+#' or \code{fit_ml_models()}.
+#' @param Y_name Character; name of the outcome variable. Default is \code{"Y"}.
+#' @param Z_name Character; name of the treatment variable. Default is \code{"Z"}.
+#' @param S_name Character; name of the infection variable. Default is \code{"S"}.
+#' @param return_se Logical; whether to return closed form standard errors. Default is \code{FALSE}.
+#'
+#' @returns If \code{return_se = FALSE}, a named numeric vector containing:
+#' \describe{
+#'   \item{additive_effect}{Estimated additive effect.}
+#'   \item{log_multiplicative_effect}{Estimated log multiplicative effect.}
+#' }
+#'
+#' If \code{return_se = TRUE}, returns:
+#' \describe{
+#'   \item{additive_effect}{Estimated additive effect.}
+#'   \item{additive_se}{Standard error for additive effect.}
+#'   \item{log_multiplicative_effect}{Estimated log multiplicative effect.}
+#'   \item{log_multiplicative_se}{Standard error for log multiplicative effect.}
+#'   \item{psi_1}{Estimated mean under treatment.}
+#'   \item{se_psi_1}{Standard error for \code{psi_1}.}
+#'   \item{psi_0}{Estimated mean under control.}
+#'   \item{se_psi_0}{Standard error for \code{psi_0}.}
+#' }
 #' 
-#' @param data dataset to predict on
-#' @param models list of pre-fit models needed for estimation
-#' @param Y_name name of growth outcome variable, default Y
-#' @param Z_name name of vaccine treatment variable, default Z
-#' @param S_name name of infection variable, default Y
-#' @param return_se flag to return standard error, defualt FALSE
-#' 
-#' @returns AIPW estimate of growth effect in doomed stratum (+ standard error if return_se = TRUE)
+#' @export
 do_aipw_doomed <- function(data, 
                            models,
                            Y_name = "Y",
@@ -126,17 +176,17 @@ do_aipw_doomed <- function(data,
   
   # Additive effect
   growth_effect <- eta_1_aipw - eta_0_aipw
-  se <- sqrt(var(augmentation_1 - augmentation_0) / dim(data)[1])
+  se <- sqrt(stats::var(augmentation_1 - augmentation_0) / dim(data)[1])
   
-  se_psi_1 <- sqrt(var(augmentation_1) / dim(data)[1])
-  se_psi_0 <- sqrt(var(augmentation_0) / dim(data)[1])
+  se_psi_1 <- sqrt(stats::var(augmentation_1) / dim(data)[1])
+  se_psi_0 <- sqrt(stats::var(augmentation_0) / dim(data)[1])
   
   # Multiplicative effect (log scale)
   growth_effect_log_mult <- log(eta_1_aipw / eta_0_aipw)
   
   # Yet SE using IF matrix same way as TMLE
   if_matrix <- cbind(augmentation_1, augmentation_0)
-  cov_matrix <- cov(if_matrix) / dim(data)[1]
+  cov_matrix <- stats::cov(if_matrix) / dim(data)[1]
   
   gradient <- matrix(c(1 / eta_1_aipw, -1 / eta_0_aipw), ncol = 1)
   
@@ -153,17 +203,34 @@ do_aipw_doomed <- function(data,
   }
 }
 
-#' Function for bounds on doomed estimate without use of cross-world assumption
-#' 
-#' @param data dataframe containing dataset to use for analysis
-#' @param Y_name growth outcome variable name
-#' @param Z_name vaccination variable name
-#' @param S_name infection variable name
-#' @param family gaussian for continuous outcome, binomial for binary outcome
-#' 
+#' Bounds for doomed principal stratum without cross-world assumptions
+#'
+#' Computes nonparametric bounds for individuals in the doomed principal stratum, 
+#' without invoking cross-world assumptions. 
+#'
+#' @param data A \code{data.frame} containing the dataset.
+#' @param Y_name Character; name of the outcome variable. Default is \code{"Y"}.
+#' @param Z_name Character; name of the treatment variable. Default is \code{"Z"}.
+#' @param S_name Character; name of the infection variable. Default is \code{"S"}.
+#' @param family Character; outcome type. Either \code{"gaussian"} for continuous
+#' outcomes or \code{"binomial"} for binary outcomes.
+#'
+#' @details
+#' The method assumes that the infection rate is lower under treatment than control.
+#' If this condition is not met, the function returns \code{NA} values.
+#'
+#' @returns A named numeric vector containing:
+#' \describe{
+#'   \item{E_Y1__S0_1}{Observed mean outcome among treated and infected.}
+#'   \item{E_Y0__S0_1_lower}{Lower bound.}
+#'   \item{E_Y0__S0_1_upper}{Upper bound.}
+#'   \item{additive_effect_lower}{Lower bound on additive effect.}
+#'   \item{additive_effect_upper}{Upper bound on additive effect.}
+#'   \item{mult_effect_lower}{Lower bound on multiplicative effect.}
+#'   \item{mult_effect_upper}{Upper bound on multiplicative effect.}
+#' }
+#'
 #' @export
-#' 
-#' @returns list containing estimate of E[Y(1) | Y(0) = 1], bounds on E[Y(0) | Y(0) = 1], bounds on additive effect, bounds on multiplicative effect
 get_bound_doomed <- function(
     data, 
     Y_name = "Y",
@@ -273,7 +340,7 @@ get_bound_doomed <- function(
   } else{
     # stop("Method not applicable unless evidence of vaccine protection.")
     
-    # Get rid of this condition ?? because permutation test
+    # Get rid of this condition because permutation test
     # stop("Method not applicable unless evidence of vaccine protection.")
     out <- rep(NA, 7)
     

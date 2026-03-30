@@ -2,20 +2,33 @@
 % Please edit documentation in R/utils.R
 \name{make_boot_df}
 \alias{make_boot_df}
-\title{Helper function to make dataframe from bootstrap results}
+\title{Convert bootstrap results into a tidy data frame}
 \usage{
 make_boot_df(boot_estimates, estimand = "nat_inf", method = "gcomp")
 }
 \arguments{
-\item{boot_estimates}{list of n_boot bootstrap estimates from one_boot}
+\item{boot_estimates}{A list of bootstrap results, where each element corresponds
+to one bootstrap replicate (e.g., output from \code{one_boot}).}
 
-\item{estimand}{estimand of interest}
+\item{estimand}{Character string specifying the estimand of interest
+(e.g., \code{"nat_inf"}, \code{"pop"}, \code{"doomed"}).}
 
-\item{method}{method of interest}
+\item{method}{Character string specifying the estimation method
+(e.g., \code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"bound"}, \code{"sens"}).}
 }
 \value{
-data frame with bootstrap results for point estimates & bounds
+A data.frame containing stacked bootstrap results, with additional columns:
+\describe{
+\item{boot_id}{Bootstrap replicate index.}
+\item{estimand}{Estimand label.}
+\item{method}{Estimation method label.}
+}
 }
 \description{
-Helper function to make dataframe from bootstrap results
+Transforms a list of bootstrap outputs into a single data frame for downstream
+summarization and inference.
+}
+\details{
+Each bootstrap replicate is expected to be a nested list indexed by
+\code{estimand} and \code{method}. Failed or missing replicates are skipped.
 }

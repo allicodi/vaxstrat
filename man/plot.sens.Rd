@@ -2,19 +2,28 @@
 % Please edit documentation in R/utils.R
 \name{plot.sens}
 \alias{plot.sens}
-\title{Plot method for sens objects}
+\title{Plot sensitivity analysis results}
 \usage{
 \method{plot}{sens}(object, se = TRUE, effect_type = c("additive", "multiplicative"), ...)
 }
 \arguments{
-\item{object}{An object of class "sens"}
+\item{object}{An object of class \code{"sens"}.}
 
-\item{se}{Logical; whether to include error bars}
+\item{se}{Logical; if TRUE, includes 95\\% confidence bands.}
 
-\item{effect_type}{Character; either "additive" or "multiplicative"}
+\item{effect_type}{Character string specifying effect scale:
+\code{"additive"} or \code{"multiplicative"}.}
 
-\item{...}{Additional arguments passed to plot (not used here)}
+\item{...}{Additional arguments (not used).}
+}
+\value{
+Produces a \code{ggplot2} plot and returns it invisibly.
 }
 \description{
-Plot method for sens objects
+Produces a line plot of estimated effects across values of the sensitivity
+parameter \eqn{\epsilon}.
+}
+\details{
+Confidence intervals are constructed using normal approximations based on
+bootstrap standard errors.
 }

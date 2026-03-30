@@ -2,7 +2,7 @@
 % Please edit documentation in R/estimate_doomed.R
 \name{get_bound_doomed}
 \alias{get_bound_doomed}
-\title{Function for bounds on doomed estimate without use of cross-world assumption}
+\title{Bounds for doomed principal stratum without cross-world assumptions}
 \usage{
 get_bound_doomed(
   data,
@@ -13,19 +13,34 @@ get_bound_doomed(
 )
 }
 \arguments{
-\item{data}{dataframe containing dataset to use for analysis}
+\item{data}{A \code{data.frame} containing the dataset.}
 
-\item{Y_name}{growth outcome variable name}
+\item{Y_name}{Character; name of the outcome variable. Default is \code{"Y"}.}
 
-\item{Z_name}{vaccination variable name}
+\item{Z_name}{Character; name of the treatment variable. Default is \code{"Z"}.}
 
-\item{S_name}{infection variable name}
+\item{S_name}{Character; name of the infection variable. Default is \code{"S"}.}
 
-\item{family}{gaussian for continuous outcome, binomial for binary outcome}
+\item{family}{Character; outcome type. Either \code{"gaussian"} for continuous
+outcomes or \code{"binomial"} for binary outcomes.}
 }
 \value{
-list containing estimate of E\link{Y(1) | Y(0) = 1}, bounds on E\link{Y(0) | Y(0) = 1}, bounds on additive effect, bounds on multiplicative effect
+A named numeric vector containing:
+\describe{
+\item{E_Y1__S0_1}{Observed mean outcome among treated and infected.}
+\item{E_Y0__S0_1_lower}{Lower bound.}
+\item{E_Y0__S0_1_upper}{Upper bound.}
+\item{additive_effect_lower}{Lower bound on additive effect.}
+\item{additive_effect_upper}{Upper bound on additive effect.}
+\item{mult_effect_lower}{Lower bound on multiplicative effect.}
+\item{mult_effect_upper}{Upper bound on multiplicative effect.}
+}
 }
 \description{
-Function for bounds on doomed estimate without use of cross-world assumption
+Computes nonparametric bounds for individuals in the doomed principal stratum,
+without invoking cross-world assumptions.
+}
+\details{
+The method assumes that the infection rate is lower under treatment than control.
+If this condition is not met, the function returns \code{NA} values.
 }

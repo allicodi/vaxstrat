@@ -2,24 +2,29 @@
 % Please edit documentation in R/estimate_nat_inf.R
 \name{do_unadj_nat_inf}
 \alias{do_unadj_nat_inf}
-\title{Function for covariate-unadjusted estimation of counterfactual post-infection outcomes in the
-naturally infected principal strata}
+\title{Unadjusted estimator for naturally infected principal stratum}
 \usage{
 do_unadj_nat_inf(data, Z_name, Y_name, S_name)
 }
 \arguments{
-\item{data}{dataframe containing dataset to use for analysis}
+\item{data}{A data.frame containing observed data.}
 
-\item{Z_name}{vaccination variable name}
+\item{Z_name}{Character string specifying the treatment (vaccination) variable.}
 
-\item{Y_name}{growth outcome variable name}
+\item{Y_name}{Character string specifying the outcome (e.g., growth) variable.}
 
-\item{S_name}{infection variable name}
+\item{S_name}{Character string specifying the infection indicator.}
 }
 \value{
-unadjusted estimates of growth effect in the naturally infected strata
+A named numeric vector containing:
+\describe{
+\item{additive_effect}{Estimated difference \eqn{\psi_1 - \psi_0}.}
+\item{log_multiplicative_effect}{Estimated log ratio \eqn{\log(\psi_1 / \psi_0)}.}
+\item{psi_1}{Estimated mean outcome under treatment in the naturally infected stratum.}
+\item{psi_0}{Estimated mean outcome under control in the naturally infected stratum.}
+}
 }
 \description{
-Function for covariate-unadjusted estimation of counterfactual post-infection outcomes in the
-naturally infected principal strata
+Computes covariate-unadjusted estimates of counterfactual post-infection
+outcomes among the naturally infected principal stratum.
 }

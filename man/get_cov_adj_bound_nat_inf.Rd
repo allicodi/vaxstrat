@@ -2,7 +2,7 @@
 % Please edit documentation in R/estimate_nat_inf.R
 \name{get_cov_adj_bound_nat_inf}
 \alias{get_cov_adj_bound_nat_inf}
-\title{Function for covariate-adjusted bounds on naturally infected estimate}
+\title{Covariate-adjusted bounds for naturally infected principal stratum}
 \usage{
 get_cov_adj_bound_nat_inf(
   data,
@@ -14,21 +14,35 @@ get_cov_adj_bound_nat_inf(
 )
 }
 \arguments{
-\item{data}{dataframe containing dataset to use for analysis}
+\item{data}{A data.frame containing observed data.}
 
-\item{X_name}{discrete-valued covariate name}
+\item{X_name}{Name of discrete covariate used for stratification.}
 
-\item{Y_name}{growth outcome variable name}
+\item{Y_name}{Outcome variable name.}
 
-\item{Z_name}{vaccination variable name}
+\item{Z_name}{Treatment variable name.}
 
-\item{S_name}{infection variable name}
+\item{S_name}{Infection indicator name.}
 
-\item{family}{gaussian for continuous outcome, binomial for binary outcome}
+\item{family}{Outcome type: "gaussian" or "binomial".}
 }
 \value{
-list containing estimate of E\link{Y(0) | Y(0) = 1}, bounds on E\link{Y(1) | Y(0) = 1}, bounds on additive effect, bounds on multiplicative effect
+A named numeric vector containing covariate-adjusted bounds for:
+\describe{
+\item{E_Y0__S0_1}{Observed mean outcome among unvaccinated infected.}
+\item{E_Y1__S0_1_lower}{Lower bound.}
+\item{E_Y1__S0_1_upper}{Upper bound.}
+\item{additive_effect_lower}{Lower bound on additive effect.}
+\item{additive_effect_upper}{Upper bound on additive effect.}
+\item{mult_effect_lower}{Lower bound on multiplicative effect.}
+\item{mult_effect_upper}{Upper bound on multiplicative effect.}
+}
 }
 \description{
-Function for covariate-adjusted bounds on naturally infected estimate
+Computes bounds on counterfactual outcomes within strata of a discrete
+covariate and aggregates across strata.
+}
+\details{
+Levels of \code{X_name} not observed in both treatment arms are pooled to
+ensure identifiability.
 }

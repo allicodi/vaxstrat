@@ -2,8 +2,7 @@
 % Please edit documentation in R/estimate_nat_inf.R
 \name{do_gcomp_nat_inf}
 \alias{do_gcomp_nat_inf}
-\title{Function for g-computation of counterfactual post-infection outcomes in the
-naturally infected principal strata}
+\title{G-computation estimator for naturally infected principal stratum}
 \usage{
 do_gcomp_nat_inf(
   data,
@@ -16,22 +15,34 @@ do_gcomp_nat_inf(
 )
 }
 \arguments{
-\item{data}{dataframe containing dataset to use for analysis}
+\item{data}{A data.frame containing observed data.}
 
-\item{models}{A list of fitted models returned from \code{fit_models}}
+\item{models}{A named list of fitted nuisance models returned by \code{fit_models}.}
 
-\item{Z_name}{vaccination variable name}
+\item{Z_name}{Character string specifying the treatment variable.}
 
-\item{X_name}{covariate name(s)}
+\item{X_name}{Character vector of covariate names.}
 
-\item{exclusion_restriction}{boolean or vector of boolean (TRUE,FALSE) indicating version of naturally infected estimators with and/or without exclusion restriction assumptions, default FALSE}
+\item{exclusion_restriction}{Logical; whether the exclusion restriction assumption is imposed.}
 
-\item{two_part_model}{If \code{exclusion_restriction} is \code{TRUE} or \code{"pop"} is included in \code{estimand}, should E(Y | Z, X) be estimated using separate models for E(Y | Z, X, S) and P(S | Z, X) (if \code{TRUE}) or using a single model for E(Y | Z, X) (if \code{FALSE}). Currently, this is only implemented for \code{'gcomp'} and \code{'aipw'} naturally infected estimators}
+\item{cross_world}{Logical; whether a cross-world independence assumption is imposed.}
+
+\item{two_part_model}{Logical; whether outcome regression is specified via a two-part model.}
 }
 \value{
-g-comp estimate of growth effect in the naturally infected strata
+A named numeric vector with elements:
+\describe{
+\item{additive_effect}{Estimated difference \eqn{\psi_1 - \psi_0}.}
+\item{log_multiplicative_effect}{Estimated log ratio \eqn{\log(\psi_1 / \psi_0)}.}
+\item{psi_1}{Estimated mean outcome under treatment.}
+\item{psi_0}{Estimated mean outcome under control.}
+}
 }
 \description{
-Function for g-computation of counterfactual post-infection outcomes in the
-naturally infected principal strata
+Computes covariate-adjusted estimates of counterfactual post-infection outcomes
+using g-computation under specified identification assumptions.
+}
+\details{
+At least one of \code{exclusion_restriction} or \code{cross_world} must be TRUE.
+Different identification strategies are used depending on these assumptions.
 }

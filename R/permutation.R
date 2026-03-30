@@ -1,15 +1,39 @@
 
-#' Function for permutation test of bounds in naturally infected
-#' 
-#' @param data dataframe containing dataset to use for analysis
-#' @param Y_name growth outcome variable name
-#' @param Z_name vaccination variable name
-#' @param S_name infection variable name
-#' @param n_permutations number of permutations to run, default 1000
-#' @param family defaults to gaussian for continuous outcome
-#' @param effect_dir direction of beneficial effect, defaults to "positive" for beneficial outcome. Used for one-side tests of bounds.  
-#'  
-#' @returns list with original estimate, null estimates for n_permutations, and p_value for one-sided test based on effect_dir
+#' Permutation test for bounds in the naturally infected stratum
+#'
+#' Performs a permutation-based hypothesis test for bounds on the treatment effect
+#' in the naturally infected principal stratum. Treatment assignment is permuted
+#' to generate the null distribution of the bound-based estimator.
+#'
+#' @param data A \code{data.frame} containing the dataset.
+#' @param Y_name Character; name of the outcome variable. Default is \code{"Y"}.
+#' @param Z_name Character; name of the treatment variable. Default is \code{"Z"}.
+#' @param S_name Character; name of the infection variable. Default is \code{"S"}.
+#' @param n_permutations Integer; number of permutations to perform. Default is \code{1000}.
+#' @param family Character; outcome type. Either \code{"gaussian"} (continuous)
+#' or \code{"binomial"} (binary). Default is \code{"gaussian"}.
+#' @param effect_dir Character; direction of beneficial effect. Either
+#' \code{"positive"} (default) or \code{"negative"}. Determines which bound is used
+#' for the one-sided hypothesis test.
+#'
+#' @details
+#' The permutation test constructs a null distribution by randomly permuting the
+#' treatment assignment variable (\code{Z}). The observed bound is then compared
+#' to this null distribution using a one-sided test:
+#' \itemize{
+#'   \item If \code{effect_dir = "positive"}, the lower bound is tested against 0.
+#'   \item If \code{effect_dir = "negative"}, the upper bound is tested against 0.
+#' }
+#'
+#' Any permutation replicates that produce undefined bounds (e.g., due to violations
+#' of identifying assumptions) are treated as not supporting the alternative hypothesis.
+#'
+#' @returns A list with class \code{"permutation_bound_nat_inf"} containing:
+#' \describe{
+#'   \item{original_est}{Named vector of bound estimates from the observed data.}
+#'   \item{null_est}{Matrix of bound estimates from permuted datasets (rows correspond to permutations).}
+#'   \item{pval_bound}{One-sided permutation p-value based on the specified direction.}
+#' }
 permutation_bound_nat_inf <- function(
     data, 
     Y_name = "Y",
@@ -50,22 +74,46 @@ permutation_bound_nat_inf <- function(
     pval_bound = mean(as.numeric(pval_vec))
   )
     
-    class(out) <- "permutation_bonud_nat_inf"
+    class(out) <- "permutation_bound_nat_inf"
     return(out)
     
 }
 
-#' Function for permutation test of bounds in doomed
-#' 
-#' @param data dataframe containing dataset to use for analysis
-#' @param Y_name growth outcome variable name
-#' @param Z_name vaccination variable name
-#' @param S_name infection variable name
-#' @param n_permutations number of permutations to run, default 1000
-#' @param family defaults to gaussian for continuous outcome
-#' @param effect_dir direction of beneficial effect, defaults to "positive" for beneficial outcome. Used for one-side tests of bounds.  
-#'  
-#' @returns list with original estimate, null estimates for n_permutations, and p_value for one-sided test based on effect_dir
+#' Permutation test for bounds in the doomed principal stratum
+#'
+#' Performs a permutation-based hypothesis test for bounds on the treatment effect
+#' in the doomed principal stratum. Treatment assignment is permuted to generate
+#' the null distribution of the bound-based estimator.
+#'
+#' @param data A \code{data.frame} containing the dataset.
+#' @param Y_name Character; name of the outcome variable. Default is \code{"Y"}.
+#' @param Z_name Character; name of the treatment variable. Default is \code{"Z"}.
+#' @param S_name Character; name of the infection variable. Default is \code{"S"}.
+#' @param n_permutations Integer; number of permutations to perform. Default is \code{1000}.
+#' @param family Character; outcome type. Either \code{"gaussian"} (continuous)
+#' or \code{"binomial"} (binary). Default is \code{"gaussian"}.
+#' @param effect_dir Character; direction of beneficial effect. Either
+#' \code{"positive"} (default) or \code{"negative"}. Determines which bound is used
+#' for the one-sided hypothesis test.
+#'
+#' @details
+#' The permutation test constructs a null distribution by randomly permuting the
+#' treatment assignment variable (\code{Z}). The observed bound is compared to this
+#' null distribution using a one-sided test:
+#' \itemize{
+#'   \item If \code{effect_dir = "positive"}, the lower bound is tested against 0.
+#'   \item If \code{effect_dir = "negative"}, the upper bound is tested against 0.
+#' }
+#'
+#' Permutation replicates that yield undefined bounds (e.g., when identifying
+#' assumptions are not satisfied) are treated as not supporting the alternative.
+#'
+#' @returns A list with class \code{"permutation_bound_doomed"} containing:
+#' \describe{
+#'   \item{original_est}{Named vector of bound estimates from the observed data.}
+#'   \item{null_est}{Matrix of bound estimates from permuted datasets.}
+#'   \item{pval_bound}{One-sided permutation p-value.}
+#' }
 permutation_bound_doomed <- function(
     data, 
     Y_name = "Y",
@@ -106,7 +154,7 @@ permutation_bound_doomed <- function(
     pval_bound = mean(as.numeric(pval_vec))
   )
     
-    class(out) <- "permutation_bonud_doomed"
+    class(out) <- "permutation_bound_doomed"
     return(out)
     
 }

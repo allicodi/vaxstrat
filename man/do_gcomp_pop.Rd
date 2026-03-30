@@ -2,7 +2,7 @@
 % Please edit documentation in R/estimate_pop.R
 \name{do_gcomp_pop}
 \alias{do_gcomp_pop}
-\title{Function for g-computation of average counterfactual post-infection outcome marginally}
+\title{G-computation estimator for population-average vaccine effect}
 \usage{
 do_gcomp_pop(
   data,
@@ -13,17 +13,36 @@ do_gcomp_pop(
 )
 }
 \arguments{
-\item{data}{dataset to predict on}
+\item{data}{A data.frame containing the observed data.}
 
-\item{models}{list of pre-fit models needed for estimation}
+\item{models}{A named list of fitted models required for estimation. Must include:
+\describe{
+\item{fit_Y_Z_X}{Outcome regression model \eqn{E[Y \mid Z, X]} (if \code{two_part_model = FALSE})}
+\item{fit_Y_Z0_S0_X, fit_Y_Z0_S1_X, fit_Y_Z1_S0_X, fit_Y_Z1_S1_X}{Outcome models for each (Z, S) combination (if \code{two_part_model = TRUE})}
+\item{fit_S_Z0_X, fit_S_Z1_X}{Models for \eqn{P(S = 1 \mid Z, X)} (if \code{two_part_model = TRUE})}
+}}
 
-\item{Z_name}{name of vaccine treatment variable, default Z}
+\item{two_part_model}{Logical; whether to use a two-part outcome model. Default is FALSE.}
 
-\item{X_name}{character vector containing name(s) of covariates, default X}
+\item{Z_name}{Character; name of the treatment variable. Default is \code{"Z"}.}
+
+\item{X_name}{Character vector; names of covariates. Default is \code{"X"}.}
 }
 \value{
-g-comp estimate of growth effect for population estimand
+A named numeric vector containing:
+\describe{
+\item{additive_effect}{Estimated additive effect \eqn{E[Y(1) - Y(0)]}}
+\item{log_multiplicative_effect}{Log multiplicative effect \eqn{\log(E[Y(1)] / E[Y(0)])}}
+\item{psi_1}{Estimated mean outcome under treatment}
+\item{psi_0}{Estimated mean outcome under control}
+}
 }
 \description{
-Function for g-computation of average counterfactual post-infection outcome marginally
+Computes the marginal average treatment effect of vaccination on the
+post-infection outcome using g-computation:
+\deqn{E[Y(1) - Y(0)] = E\{E[Y \mid Z = 1, X]\} - E\{E[Y \mid Z = 0, X]\}}
+}
+\details{
+Optionally supports a two-part model that decomposes the outcome into
+components conditional on an intermediate variable.
 }

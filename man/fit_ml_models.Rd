@@ -2,7 +2,7 @@
 % Please edit documentation in R/fit_models.R
 \name{fit_ml_models}
 \alias{fit_ml_models}
-\title{Function to fit all SuperLearner models needed by various estimators}
+\title{Fit machine learning models required for estimation procedures using SuperLearner}
 \usage{
 fit_ml_models(
   data,
@@ -24,29 +24,64 @@ fit_ml_models(
 )
 }
 \arguments{
-\item{data}{dataset used to fit models}
+\item{data}{A data.frame containing the observed data.}
 
-\item{Y_name}{name of growth outcome variable, default G}
+\item{Y_name}{Character; name of the outcome variable. Default is \code{"Y"}.}
 
-\item{Z_name}{name of vaccine treatment variable, default Z}
+\item{Z_name}{Character; name of the treatment variable. Default is \code{"Z"}.}
 
-\item{X_name}{character vector containing name(s) of covariates, default X}
+\item{X_name}{Character vector; names of baseline covariates. Default is \code{"X"}.}
 
-\item{S_name}{name of infection variable, default Y}
+\item{S_name}{Character; name of the intermediate (e.g., infection) variable. Default is \code{"S"}.}
 
-\item{Y_X_library}{specify SuperLearner libraries to be used for fitting growth on covariates. Default GLM}
+\item{estimand}{Character vector specifying estimands of interest:
+\code{"nat_inf"}, \code{"doomed"}, \code{"pop"}.}
 
-\item{S_X_library}{specify SuperLearner libraries to be used for fitting infection on covariates. Default GLM}
+\item{method}{Character vector specifying estimation methods:
+\code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"tmle"}, \code{"bound"}, \code{"sens"}.}
 
-\item{family}{family for outcome model, defaults to gaussian for growth}
+\item{exclusion_restriction}{Logical; whether exclusion restriction is assumed.}
 
-\item{v_folds}{number of cross-validation folds to use in SuperLearner, default 3}
+\item{cross_world}{Logical; whether cross-world assumptions are invoked.}
 
-\item{est}{character vector of names of estimators to use for growth effect}
+\item{Y_Z_X_library}{Character vector of SuperLearner libraries for outcome model
+\eqn{E[Y \mid Z, X]}. Default is \code{"SL.glm"}.}
+
+\item{Y_X_library}{Character vector of SuperLearner libraries for outcome models
+conditional on \eqn{X}. Default is \code{"SL.glm"}.}
+
+\item{S_X_library}{Character vector of libraries for \eqn{P(S = 1 \mid X)}.}
+
+\item{S_Z_X_library}{Character vector of libraries for \eqn{P(S = 1 \mid Z, X)}.}
+
+\item{Z_X_library}{Character vector of libraries for \eqn{P(Z = 1 \mid X)}.
+Default is \code{"SL.mean"}.}
+
+\item{family}{Family for outcome regression (passed to SuperLearner). Default is \code{"gaussian"}.}
+
+\item{v_folds}{Integer; number of cross-validation folds. Default is 3.}
 }
 \value{
-list with models needed for specified estimators
+A named list of fitted \code{SuperLearner} objects. Components mirror
+those returned by \code{fit_models()}, including:
+\describe{
+\item{fit_Y_Z_X}{Outcome model \eqn{E[Y \mid Z, X]}}
+\item{fit_Y_Z1_S1_X, fit_Y_Z1_S0_X, fit_Y_Z0_S1_X, fit_Y_Z0_S0_X}{Stratified outcome models}
+\item{fit_S_Z1_X, fit_S_Z0_X}{Models for \eqn{P(S = 1 \mid Z, X)}}
+\item{fit_S_Z_X}{Model for \eqn{P(S = 1 \mid Z, X)} (pooled)}
+\item{fit_Z_X}{Model for \eqn{P(Z = 1 \mid X)}}
+}
 }
 \description{
-Function to fit all SuperLearner models needed by various estimators
+Fits all models required for the specified estimands and estimation methods
+using the \code{SuperLearner} ensemble learning framework. Only models needed
+for the requested estimand–method combinations are fit.
+}
+\details{
+This function provides a flexible alternative to \code{fit_models()} by allowing
+nonparametric estimation via ensemble learning. Users can specify custom
+SuperLearner libraries for each component of the estimation procedure.
+}
+\seealso{
+\code{\link[SuperLearner]{SuperLearner}}
 }

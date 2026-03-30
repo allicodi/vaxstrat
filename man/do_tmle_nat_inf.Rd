@@ -2,7 +2,7 @@
 % Please edit documentation in R/estimate_nat_inf.R
 \name{do_tmle_nat_inf}
 \alias{do_tmle_nat_inf}
-\title{Function for efficient TMLE estimator}
+\title{Targeted maximum likelihood estimator (TMLE)}
 \usage{
 do_tmle_nat_inf(
   data,
@@ -17,25 +17,33 @@ do_tmle_nat_inf(
 )
 }
 \arguments{
-\item{data}{dataset to predict on}
+\item{data}{A data.frame containing observed data.}
 
-\item{models}{list of pre-fit models needed for estimation}
+\item{models}{A named list of fitted nuisance models.}
 
-\item{Y_name}{name of growth outcome variable, default Y}
+\item{exclusion_restriction}{Logical; currently not supported.}
 
-\item{Z_name}{name of vaccine treatment variable, default Z}
+\item{Y_name}{Character string specifying the outcome variable.}
 
-\item{S_name}{name of infection variable, default Y}
+\item{Z_name}{Character string specifying the treatment variable.}
 
-\item{return_se}{flag to return standard error, defualt FALSE}
+\item{S_name}{Character string specifying the infection indicator.}
 
-\item{max_iter}{TODO}
+\item{return_se}{Logical; whether to return standard errors.}
 
-\item{tol}{TOOD}
+\item{max_iter}{Maximum number of targeting iterations.}
+
+\item{tol}{Convergence tolerance for the efficient influence function.}
 }
 \value{
-TMLE estimate of growth effect (+ standard error if return_se = TRUE)
+A named numeric vector containing the additive and log multiplicative effects.
+If \code{return_se = TRUE}, standard errors and component estimates are included.
 }
 \description{
-Function for efficient TMLE estimator
+Computes a targeted maximum likelihood estimate of the growth effect in the
+naturally infected principal stratum.
+}
+\details{
+TMLE updates initial nuisance estimates via iterative targeting steps until
+the empirical mean of the efficient influence function is approximately zero.
 }
