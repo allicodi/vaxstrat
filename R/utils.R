@@ -106,16 +106,16 @@ get_boot_se <- function(boot_estimates, estimand = "nat_inf", method = "gcomp"){
                           estimand = estimand,
                           method = method)
   
-  data.frame(se_additive = sd(boot_df$additive_effect),
+  data.frame(se_additive = stats::sd(boot_df$additive_effect),
              lower_ci_additive = stats::quantile(boot_df$additive_effect, 0.025),
              upper_ci_additive = stats::quantile(boot_df$additive_effect, 0.975),
-             se_log_mult = sd(boot_df$log_multiplicative_effect),
+             se_log_mult = stats::sd(boot_df$log_multiplicative_effect),
              lower_ci_mult = exp(stats::quantile(boot_df$log_multiplicative_effect, 0.025, na.rm = TRUE)), # added NA rm true for some bootstrap replicates
              upper_ci_mult = exp(stats::quantile(boot_df$log_multiplicative_effect, 0.975, na.rm = TRUE)),
-             se_psi_1 = sd(boot_df$psi_1),
+             se_psi_1 = stats::sd(boot_df$psi_1),
              lower_ci_psi_1 = stats::quantile(boot_df$psi_1, 0.025),
              upper_ci_psi_1 = stats::quantile(boot_df$psi_1, 0.975),
-             se_psi_0 = sd(boot_df$psi_0),
+             se_psi_0 = stats::sd(boot_df$psi_0),
              lower_ci_psi_0 = stats::quantile(boot_df$psi_0, 0.025),
              upper_ci_psi_0 = stats::quantile(boot_df$psi_0, 0.975))
 }
@@ -148,22 +148,22 @@ get_boot_se_bound <- function(boot_estimates, estimand = "nat_inf", method = "bo
   number_NA <- length(which(is.na(boot_df$additive_effect_lower)))
   
   data.frame(number_NA_replicates = number_NA,
-             se_additive_lower = sd(boot_df$additive_effect_lower, na.rm = TRUE),
+             se_additive_lower = stats::sd(boot_df$additive_effect_lower, na.rm = TRUE),
              lower_ci_additive_lower = stats::quantile(boot_df$additive_effect_lower, 0.025, na.rm = TRUE),
              upper_ci_additive_lower = stats::quantile(boot_df$additive_effect_lower, 0.975, na.rm = TRUE),
-             se_additive_upper = sd(boot_df$additive_effect_upper, na.rm = TRUE),
+             se_additive_upper = stats::sd(boot_df$additive_effect_upper, na.rm = TRUE),
              lower_ci_additive_upper = stats::quantile(boot_df$additive_effect_upper, 0.025, na.rm = TRUE),
              upper_ci_additive_upper = stats::quantile(boot_df$additive_effect_upper, 0.975, na.rm = TRUE),
              #original
-             #se_mult_lower = sd(boot_df$mult_effect_lower),
+             #se_mult_lower = stats::sd(boot_df$mult_effect_lower),
              #new
-             se_log_mult_lower = sd(log(boot_df$mult_effect_lower), na.rm = TRUE),
+             se_log_mult_lower = stats::sd(log(boot_df$mult_effect_lower), na.rm = TRUE),
              lower_ci_mult_lower = stats::quantile(boot_df$mult_effect_lower, 0.025, na.rm = TRUE),
              upper_ci_mult_lower = stats::quantile(boot_df$mult_effect_lower, 0.975, na.rm = TRUE),
              #original
-             #se_mult_upper = sd(boot_df$mult_effect_upper),
+             #se_mult_upper = stats::sd(boot_df$mult_effect_upper),
              #new
-             se_log_mult_upper = sd(log(boot_df$mult_effect_upper), na.rm = TRUE),
+             se_log_mult_upper = stats::sd(log(boot_df$mult_effect_upper), na.rm = TRUE),
              lower_ci_mult_upper = stats::quantile(boot_df$mult_effect_upper, 0.025, na.rm = TRUE),
              upper_ci_mult_upper = stats::quantile(boot_df$mult_effect_upper, 0.975, na.rm = TRUE))
 }
@@ -200,10 +200,10 @@ get_boot_se_sens <- function(boot_estimates, estimand = "nat_inf", method = "sen
   for(e in 1:length(epsilon)){
     # QUESTION handling NAs 
     boot_res_list[[e]] <- data.frame(epsilon = epsilon[e],
-                                     se_additive = sd(boot_df$additive_effect[boot_df$epsilon == epsilon[e]], na.rm = TRUE),
+                                     se_additive = stats::sd(boot_df$additive_effect[boot_df$epsilon == epsilon[e]], na.rm = TRUE),
                                      lower_ci_additive = stats::quantile(boot_df$additive_effect[boot_df$epsilon == epsilon[e]], 0.025, na.rm = TRUE),
                                      upper_ci_additive = stats::quantile(boot_df$additive_effect[boot_df$epsilon == epsilon[e]], 0.975, na.rm = TRUE),
-                                     se_mult = sd(boot_df$log_multiplicative_effect[boot_df$epsilon == epsilon[e]], na.rm = TRUE),
+                                     se_mult = stats::sd(boot_df$log_multiplicative_effect[boot_df$epsilon == epsilon[e]], na.rm = TRUE),
                                      lower_ci_mult = exp(stats::quantile(boot_df$log_multiplicative_effect[boot_df$epsilon == epsilon[e]], 0.025, na.rm = TRUE)),
                                      upper_ci_mult = exp(stats::quantile(boot_df$log_multiplicative_effect[boot_df$epsilon == epsilon[e]], 0.975, na.rm = TRUE)))
   }
