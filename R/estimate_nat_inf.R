@@ -1180,8 +1180,8 @@ get_cov_adj_bound_nat_inf <- function(
   
   P_Sis1__Zis0 <- mean(data[[S_name]][data[[Z_name]] == 0])
   E_Y0__S0_1 <- sum(P_Sis1__Zis0_Xisx_level / P_Sis1__Zis0 * E_Y__Zis0_Xisx_level * P_Xisx_level)
-  E_Y1__S0_1_lower <- sum(l_x_level * P_Xisx_level)
-  E_Y1__S0_1_upper <- sum(u_x_level * P_Xisx_level)
+  E_Y1__S0_1_lower <- sum(l_x_level * P_Sis1__Zis0_Xisx_level / P_Sis1__Zis0 * P_Xisx_level)
+  E_Y1__S0_1_upper <- sum(u_x_level * P_Sis1__Zis0_Xisx_level / P_Sis1__Zis0 * P_Xisx_level)
   
   out <- c(
     "E_Y0__S0_1" = E_Y0__S0_1,
