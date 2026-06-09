@@ -14,7 +14,7 @@ to one bootstrap replicate (e.g., output from \code{one_boot}).}
 (e.g., \code{"nat_inf"}, \code{"pop"}, \code{"doomed"}).}
 
 \item{method}{Character string specifying the estimation method
-(e.g., \code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"bound"}, \code{"sens"}).}
+(e.g., \code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"bound"}, \code{"sens_cw"}).}
 }
 \value{
 A data.frame containing stacked bootstrap results, with additional columns:

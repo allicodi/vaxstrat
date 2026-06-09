@@ -11,7 +11,7 @@ fit_ml_models(
   X_name = c("X"),
   S_name = "S",
   estimand = c("nat_inf", "doomed", "pop"),
-  method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens"),
+  method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens_cw"),
   exclusion_restriction = c(TRUE, FALSE),
   cross_world = c(TRUE, FALSE),
   Y_Z_X_library = c("SL.glm"),
@@ -38,7 +38,7 @@ fit_ml_models(
 \code{"nat_inf"}, \code{"doomed"}, \code{"pop"}.}
 
 \item{method}{Character vector specifying estimation methods:
-\code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"tmle"}, \code{"bound"}, \code{"sens"}.}
+\code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"tmle"}, \code{"bound"}, \code{"sens_cw"}.}
 
 \item{exclusion_restriction}{Logical; whether exclusion restriction is assumed.}
 

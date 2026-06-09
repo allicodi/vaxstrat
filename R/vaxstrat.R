@@ -158,7 +158,7 @@ vaxstrat <- function(data,
                      X_name = "X",
                      S_name = "S",
                      estimand = c("nat_inf", "doomed", "pop"),
-                     method = c("gcomp", "ipw", "aipw", "tmle", "bound", "cov_adj_bound", "sens"),
+                     method = c("gcomp", "ipw", "aipw", "tmle", "bound", "cov_adj_bound", "sens_cw", "sens_mono"),
                      exclusion_restriction = c(TRUE, FALSE),
                      cross_world = c(TRUE, FALSE),
                      two_part_model = FALSE,
@@ -198,11 +198,11 @@ vaxstrat <- function(data,
                      ml_models = NULL)
   
   # Estimation methods requiring model fitting (everything but bounds)
-  if(any(method %in% c("gcomp", "ipw", "aipw", "tmle", "sens"))){
+  if(any(method %in% c("gcomp", "ipw", "aipw", "tmle", "sens_cw", "sens_mono"))){
     
-    # If ML specified and aipw, tmle, and/or sens are in method, fit ML models; otherwise only fit GLMs
+    # If ML specified and aipw, tmle, and/or sens_cw are in method, fit ML models; otherwise only fit GLMs
     if(ml){
-      if(any(method %in% c("aipw", "tmle", "sens"))){
+      if(any(method %in% c("aipw", "tmle", "sens_cw", "sens_mono"))){
         ml_models <- vaxstrat::fit_ml_models(data = data, 
                                              estimand = estimand,
                                              method = method,
@@ -270,7 +270,7 @@ vaxstrat <- function(data,
   # ----------------------------------------------------------------------------
   # 2. Bootstrap standard error & confidence intervals -------------------------
   # ----------------------------------------------------------------------------
-  if(return_se == FALSE | any(method %in% c("gcomp", "ipw", "bound", "cov_adj_bound", "sens"))){
+  if(return_se == FALSE | any(method %in% c("gcomp", "ipw", "bound", "cov_adj_bound", "sens_cw"))){
     out <- bootstrap_estimates(data = data, 
                                Y_name = Y_name,
                                Z_name = Z_name,
@@ -469,41 +469,41 @@ vaxstrat <- function(data,
 
     }
     
-    if("sens" %in% method){
+    if("sens_cw" %in% method){
       if(ml){
-        out$nat_inf$sens$pt_est <- do_sens_aipw_nat_inf(data = data, models = ml_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, epsilon = epsilon, return_se = return_se)
+        out$nat_inf$sens_cw$pt_est <- do_sens_cw_aipw_nat_inf(data = data, models = ml_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, epsilon = epsilon, return_se = return_se)
       } else{
-        out$nat_inf$sens$pt_est <- do_sens_aipw_nat_inf(data = data, models = models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, epsilon = epsilon, return_se = return_se)
+        out$nat_inf$sens_cw$pt_est <- do_sens_cw_aipw_nat_inf(data = data, models = models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, epsilon = epsilon, return_se = return_se)
       }
       
-      if(is.null(out$nat_inf$sens$boot_se)){
+      if(is.null(out$nat_inf$sens_cw$boot_se)){
         # closed form SE
         
         # test stats
-        test_stat_add <- (out$nat_inf$sens$pt_est$additive_effect - null_hypothesis_value) /
-          out$nat_inf$sens$pt_est$additive_se
+        test_stat_add <- (out$nat_inf$sens_cw$pt_est$additive_effect - null_hypothesis_value) /
+          out$nat_inf$sens_cw$pt_est$additive_se
         
-        test_stat_mult <- (out$nat_inf$sens$pt_est$log_multiplicative_effect - null_hypothesis_value) /
-          out$nat_inf$sens$pt_est$log_multiplicative_se
+        test_stat_mult <- (out$nat_inf$sens_cw$pt_est$log_multiplicative_effect - null_hypothesis_value) /
+          out$nat_inf$sens_cw$pt_est$log_multiplicative_se
         
         # p-values
         p_val_add <- 2 * (1 - stats::pnorm(abs(test_stat_add)))
         p_val_mult <- 2 * (1 - stats::pnorm(abs(test_stat_mult)))
         
         # results data frames
-        out$nat_inf$sens$reject$additive <- data.frame(
-          epsilon   = out$nat_inf$sens$pt_est$epsilon,
-          pt_est    = out$nat_inf$sens$pt_est$additive_effect,
-          se        = out$nat_inf$sens$pt_est$additive_se,
+        out$nat_inf$sens_cw$reject$additive <- data.frame(
+          epsilon   = out$nat_inf$sens_cw$pt_est$epsilon,
+          pt_est    = out$nat_inf$sens_cw$pt_est$additive_effect,
+          se        = out$nat_inf$sens_cw$pt_est$additive_se,
           test_stat = test_stat_add,
           p_val      = p_val_add,
           reject    = p_val_add < alpha_level
         )
         
-        out$nat_inf$sens$reject$mult <- data.frame(
-          epsilon   = out$nat_inf$sens$pt_est$epsilon,
-          pt_est    = exp(out$nat_inf$sens$pt_est$log_multiplicative_effect),
-          se        = out$nat_inf$sens$pt_est$log_multiplicative_se,
+        out$nat_inf$sens_cw$reject$mult <- data.frame(
+          epsilon   = out$nat_inf$sens_cw$pt_est$epsilon,
+          pt_est    = exp(out$nat_inf$sens_cw$pt_est$log_multiplicative_effect),
+          se        = out$nat_inf$sens_cw$pt_est$log_multiplicative_se,
           test_stat = test_stat_mult,
           p_val      = p_val_mult,
           reject    = p_val_mult < alpha_level
@@ -513,28 +513,28 @@ vaxstrat <- function(data,
         # bootstrap se
         
         # additive
-        test_stat_add <- (out$nat_inf$sens$pt_est$additive_effect - null_hypothesis_value) /
-          out$nat_inf$sens$boot_se$se_additive
+        test_stat_add <- (out$nat_inf$sens_cw$pt_est$additive_effect - null_hypothesis_value) /
+          out$nat_inf$sens_cw$boot_se$se_additive
         p_val_add <- 2 * (1 - stats::pnorm(abs(test_stat_add)))
         
-        out$nat_inf$sens$reject$additive <- data.frame(
-          epsilon = out$nat_inf$sens$boot_se$epsilon,
-          pt_est = out$nat_inf$sens$pt_est$additive_effect,
-          se = out$nat_inf$sens$boot_se$se_additive,
+        out$nat_inf$sens_cw$reject$additive <- data.frame(
+          epsilon = out$nat_inf$sens_cw$boot_se$epsilon,
+          pt_est = out$nat_inf$sens_cw$pt_est$additive_effect,
+          se = out$nat_inf$sens_cw$boot_se$se_additive,
           test_stat = test_stat_add,
           p_val = p_val_add,
           reject = p_val_add < alpha_level
         )
         
         # multiplicative
-        test_stat_mult <- (out$nat_inf$sens$pt_est$log_multiplicative_effect - null_hypothesis_value) /
-          out$nat_inf$sens$boot_se$se_mult
+        test_stat_mult <- (out$nat_inf$sens_cw$pt_est$log_multiplicative_effect - null_hypothesis_value) /
+          out$nat_inf$sens_cw$boot_se$se_mult
         p_val_mult <- 2 * (1 - stats::pnorm(abs(test_stat$mult)))
         
-        out$nat_inf$sens$reject$mult <- data.frame(
-          epsilon = out$nat_inf$sens$boot_se$epsilon,
-          pt_est = exp(out$nat_inf$sens$pt_est$log_multiplicative_effect),
-          se = out$nat_inf$sens$boot_se$se_mult,
+        out$nat_inf$sens_cw$reject$mult <- data.frame(
+          epsilon = out$nat_inf$sens_cw$boot_se$epsilon,
+          pt_est = exp(out$nat_inf$sens_cw$pt_est$log_multiplicative_effect),
+          se = out$nat_inf$sens_cw$boot_se$se_mult,
           test_stat = test_stat_mult,
           p_val = p_val_mult,
           reject = p_val_mult < alpha_level
@@ -542,8 +542,26 @@ vaxstrat <- function(data,
         
       }
       
-      class(out$nat_inf$sens) <- "sens"
+      class(out$nat_inf$sens_cw) <- "sens_cw"
 
+    }
+    
+    if("sens_mono" %in% method){
+      if(ml){
+        out$nat_inf$sens_mono <- do_sens_mono_nat_inf(
+          data = data, models = ml_models,
+          Y_name = Y_name, Z_name = Z_name, S_name = S_name,
+          epsilon = epsilon
+        )
+      } else{
+        out$nat_inf$sens_mono <- do_sens_mono_nat_inf(
+          data = data, models = models,
+          Y_name = Y_name, Z_name = Z_name, S_name = S_name,
+          epsilon = epsilon
+        )
+      }
+      
+      class(out$nat_inf$sens_mono) <- "sens_mono"
     }
     
     if("bound" %in% method){

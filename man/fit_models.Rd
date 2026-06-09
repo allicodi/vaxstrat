@@ -11,7 +11,7 @@ fit_models(
   X_name = c("X"),
   S_name = "S",
   estimand = c("nat_inf", "doomed", "pop"),
-  method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens"),
+  method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens_cw"),
   exclusion_restriction = c(TRUE, FALSE),
   cross_world = c(TRUE, FALSE),
   Y_Z_X_model = NULL,
@@ -38,7 +38,7 @@ fit_models(
 \code{"nat_inf"} (naturally infected), \code{"doomed"}, and \code{"pop"} (population-level).}
 
 \item{method}{Character vector specifying estimation methods. Options include
-\code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"tmle"}, \code{"bound"}, and \code{"sens"}.}
+\code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"tmle"}, \code{"bound"}, and \code{"sens_cw"}.}
 
 \item{exclusion_restriction}{Logical; whether exclusion restriction is assumed.}
 

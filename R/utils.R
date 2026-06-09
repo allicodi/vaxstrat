@@ -38,7 +38,7 @@ simple_predict <- function(model, newdata){
 #' @param estimand Character string specifying the estimand of interest
 #'   (e.g., \code{"nat_inf"}, \code{"pop"}, \code{"doomed"}).
 #' @param method Character string specifying the estimation method
-#'   (e.g., \code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"bound"}, \code{"sens"}).
+#'   (e.g., \code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"bound"}, \code{"sens_cw"}).
 #'
 #' @details
 #' Each bootstrap replicate is expected to be a nested list indexed by
@@ -62,7 +62,7 @@ make_boot_df <- function(boot_estimates, estimand = "nat_inf", method = "gcomp")
       # If it's just a single number, convert to named data frame
       if (is.atomic(row) && length(row) == 1) {
         row <- data.frame(estimate = row)
-      } else if(class(row) == "sens"){
+      } else if(class(row) == "sens_cw"){
         class(row) <- "data.frame"
       } else if (is.null(dim(row))) {
         row <- as.data.frame(t(row))
@@ -175,7 +175,7 @@ get_boot_se_bound <- function(boot_estimates, estimand = "nat_inf", method = "bo
 #'
 #' @param boot_estimates A list of bootstrap results.
 #' @param estimand Character string specifying the estimand.
-#' @param method Character string specifying the method (typically \code{"sens"}).
+#' @param method Character string specifying the method (typically \code{"sens_cw"}).
 #'
 #' @return A data.frame with one row per \eqn{\epsilon}, containing:
 #' \describe{
@@ -188,7 +188,7 @@ get_boot_se_bound <- function(boot_estimates, estimand = "nat_inf", method = "bo
 #'   \item{upper_ci_mult}{Upper CI (multiplicative scale).}
 #' }
 #'
-get_boot_se_sens <- function(boot_estimates, estimand = "nat_inf", method = "sens"){
+get_boot_se_sens_cw <- function(boot_estimates, estimand = "nat_inf", method = "sens_cw"){
   boot_df <- make_boot_df(boot_estimates = boot_estimates,
                           estimand = estimand,
                           method = method)
@@ -375,7 +375,7 @@ print.vaxstrat <- function(x, scale = "additive", ...) {
 #' Produces a line plot of estimated effects across values of the sensitivity
 #' parameter \eqn{\epsilon}.
 #'
-#' @param object An object of class \code{"sens"}.
+#' @param object An object of class \code{"sens_cw"}.
 #' @param se Logical; if TRUE, includes 95\% confidence bands.
 #' @param effect_type Character string specifying effect scale:
 #'   \code{"additive"} or \code{"multiplicative"}.
@@ -388,15 +388,15 @@ print.vaxstrat <- function(x, scale = "additive", ...) {
 #' @return Produces a \code{ggplot2} plot and returns it invisibly.
 #' @export
 #' 
-#' @method plot sens
-plot.sens <- function(
+#' @method plot sens_cw
+plot.sens_cw <- function(
   object, se = TRUE, effect_type = c("additive", "multiplicative"), 
   ...
 ) {
   effect_type <- match.arg(effect_type)
 
-  if (!inherits(object, "sens")) {
-    stop("Object must be of class 'sens'")
+  if (!inherits(object, "sens_cw")) {
+    stop("Object must be of class 'sens_cw'")
   }
 
   df <- object

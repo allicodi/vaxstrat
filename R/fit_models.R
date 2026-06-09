@@ -13,7 +13,7 @@
 #' @param estimand Character vector specifying estimands of interest. Options include:
 #'   `"nat_inf"` (naturally infected), `"doomed"`, and `"pop"` (population-level).
 #' @param method Character vector specifying estimation methods. Options include
-#'   `"gcomp"`, `"ipw"`, `"aipw"`, `"tmle"`, `"bound"`, and `"sens"`.
+#'   `"gcomp"`, `"ipw"`, `"aipw"`, `"tmle"`, `"bound"`, and `"sens_cw"`.
 #' @param exclusion_restriction Logical; whether exclusion restriction is assumed.
 #' @param cross_world Logical; whether cross-world assumptions are invoked.
 #' @param Y_Z_X_model Optional formula for outcome regression \eqn{E[Y \mid Z, X]}.
@@ -54,7 +54,7 @@ fit_models <- function(data,
                        X_name = c("X"),
                        S_name = "S",
                        estimand = c("nat_inf", "doomed", "pop"),
-                       method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens"),
+                       method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens_cw"),
                        exclusion_restriction = c(TRUE, FALSE),
                        cross_world = c(TRUE, FALSE),
                        Y_Z_X_model = NULL,
@@ -120,7 +120,7 @@ fit_models <- function(data,
   }
   
   # only needed for AIPW sensitivity analysis
-  if(any(c("sens") %in% method)){
+  if(any(c("sens_cw", "sens_mono") %in% method)){
     if(is.null(S_Z_X_model)){
       S_Z_X_model <- paste0(S_name, "~", Z_name, "+", paste0(X_name, collapse = "+"))
     }
@@ -133,7 +133,7 @@ fit_models <- function(data,
   }
   
   # not needed for gcomp
-  if(any(c("aipw", "sens", "ipw", "tmle") %in% method)){
+  if(any(c("aipw", "sens_cw", "sens_mono", "ipw", "tmle") %in% method)){
     out$fit_Z_X <- stats::glm(
       Z_X_model, family = "binomial", data = data
     )
@@ -158,7 +158,7 @@ fit_models <- function(data,
 #' @param estimand Character vector specifying estimands of interest:
 #'   `"nat_inf"`, `"doomed"`, `"pop"`.
 #' @param method Character vector specifying estimation methods:
-#'   `"gcomp"`, `"ipw"`, `"aipw"`, `"tmle"`, `"bound"`, `"sens"`.
+#'   `"gcomp"`, `"ipw"`, `"aipw"`, `"tmle"`, `"bound"`, `"sens_cw"`.
 #' @param exclusion_restriction Logical; whether exclusion restriction is assumed.
 #' @param cross_world Logical; whether cross-world assumptions are invoked.
 #' @param Y_Z_X_library Character vector of SuperLearner libraries for outcome model
@@ -196,7 +196,7 @@ fit_ml_models <- function(data,
                           X_name = c("X"),
                           S_name = "S",
                           estimand = c("nat_inf", "doomed", "pop"),
-                          method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens"),
+                          method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens_cw"),
                           exclusion_restriction = c(TRUE, FALSE),
                           cross_world = c(TRUE, FALSE),
                           Y_Z_X_library = c("SL.glm"),
@@ -270,7 +270,7 @@ fit_ml_models <- function(data,
   }
   
   # only needed for AIPW sensitivity analysis
-  if(any(c("sens") %in% method)){
+  if(any(c("sens_cw", "sens_mono") %in% method)){
     out$fit_S_Z_X <- SuperLearner::SuperLearner(
       Y = data[[S_name]],
       X = data[, c(Z_name, X_name), drop = FALSE],
@@ -280,7 +280,7 @@ fit_ml_models <- function(data,
   }
   
   # needed for all but gcomp
-  if(any(c("aipw", "sens", "tmle") %in% method)){
+  if(any(c("aipw", "sens_cw", "sens_mono", "tmle") %in% method)){
     out$fit_Z_X <- SuperLearner::SuperLearner(Y = data[[Z_name]],
                                               X = data[, X_name, drop = FALSE],
                                               family = stats::binomial(),
@@ -291,3 +291,4 @@ fit_ml_models <- function(data,
   return(out)
   
 }
+
