@@ -48,22 +48,22 @@
 #' }
 #'
 #' @export
-fit_models <- function(data,
-                       Y_name = "Y",
-                       Z_name = "Z",
-                       X_name = c("X"),
-                       S_name = "S",
-                       estimand = c("nat_inf", "doomed", "pop"),
-                       method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens_cw"),
-                       exclusion_restriction = c(TRUE, FALSE),
-                       cross_world = c(TRUE, FALSE),
-                       Y_Z_X_model = NULL,
-                       Y_X_S1_model = NULL,
-                       Y_X_S0_model = NULL,
-                       S_X_model = NULL,
-                       S_Z_X_model = NULL,
-                       Z_X_model = paste0(Z_name, " ~ 1"),
-                       family = "gaussian"){
+fit_one_glm <- function(data,
+                         Y_name = "Y",
+                         Z_name = "Z",
+                         X_name = c("X"),
+                         S_name = "S",
+                         estimand = c("nat_inf", "doomed", "pop"),
+                         method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens_cw"),
+                         exclusion_restriction = c(TRUE, FALSE),
+                         cross_world = c(TRUE, FALSE),
+                         Y_Z_X_model = NULL,
+                         Y_X_S1_model = NULL,
+                         Y_X_S0_model = NULL,
+                         S_X_model = NULL,
+                         S_Z_X_model = NULL,
+                         Z_X_model = paste0(Z_name, " ~ 1"),
+                         family = "gaussian"){
   
   # Prep model formulas if not pre-specified
   if(is.null(Y_Z_X_model)){
@@ -190,22 +190,22 @@ fit_models <- function(data,
 #' @seealso \code{\link[SuperLearner]{SuperLearner}}
 #'
 #' @export
-fit_ml_models <- function(data,
-                          Y_name = "Y",
-                          Z_name = "Z",
-                          X_name = c("X"),
-                          S_name = "S",
-                          estimand = c("nat_inf", "doomed", "pop"),
-                          method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens_cw"),
-                          exclusion_restriction = c(TRUE, FALSE),
-                          cross_world = c(TRUE, FALSE),
-                          Y_Z_X_library = c("SL.glm"),
-                          Y_X_library = c("SL.glm"),
-                          S_X_library = c("SL.glm"),
-                          S_Z_X_library = c("SL.glm"),
-                          Z_X_library = c("SL.mean"),
-                          family = "gaussian",
-                          v_folds = 3){
+fit_one_ml <- function(data,
+                        Y_name = "Y",
+                        Z_name = "Z",
+                        X_name = c("X"),
+                        S_name = "S",
+                        estimand = c("nat_inf", "doomed", "pop"),
+                        method = c("gcomp", "ipw", "aipw", "tmle", "bound", "sens_cw"),
+                        exclusion_restriction = c(TRUE, FALSE),
+                        cross_world = c(TRUE, FALSE),
+                        Y_Z_X_library = c("SL.glm"),
+                        Y_X_library = c("SL.glm"),
+                        S_X_library = c("SL.glm"),
+                        S_Z_X_library = c("SL.glm"),
+                        Z_X_library = c("SL.mean"),
+                        family = "gaussian",
+                        v_folds = 3){
   
   out <- list()
   
@@ -274,7 +274,7 @@ fit_ml_models <- function(data,
     out$fit_S_Z_X <- SuperLearner::SuperLearner(
       Y = data[[S_name]],
       X = data[, c(Z_name, X_name), drop = FALSE],
-      family = "binomial",
+      family = stats::binomial(),
       SL.library = S_Z_X_library,
       cvControl = list(V = v_folds))
   }
@@ -290,5 +290,377 @@ fit_ml_models <- function(data,
   
   return(out)
   
+}
+
+fit_models <- function(data,
+                       Y_name = "G",
+                       Z_name = "Z",
+                       X_name = "X",
+                       S_name = "S",
+                       estimand = c("nat_inf", "doomed", "pop"),
+                       method = c("gcomp", "ipw", "aipw", "tmle",
+                                  "bound", "cov_adj_bound", "sens_cw", "sens_mono"),
+                       exclusion_restriction = c(TRUE, FALSE),
+                       cross_world = c(TRUE, FALSE),
+                       ml = TRUE,
+                       Y_Z_X_model = NULL,
+                       Y_X_S1_model = NULL,
+                       Y_X_S0_model = NULL,
+                       S_X_model = NULL,
+                       S_Z_X_model = NULL,
+                       Z_X_model = paste0(Z_name, " ~ 1"),
+                       Y_Z_X_library = c("SL.glm"),
+                       Y_X_library = c("SL.glm"),
+                       S_X_library = c("SL.glm"),
+                       S_Z_X_library = c("SL.glm"),
+                       Z_X_library = c("SL.mean"),
+                       family = "gaussian",
+                       v_folds = 3){
+  
+  # ml_models only for AIPW and TMLE
+  model_list <- list(
+    models = NULL,
+    ml_models = NULL
+  )
+  
+  # everything but bounds
+  needs_models <- any(method %in% c(
+    "gcomp", "ipw", "aipw", "tmle", "sens_cw", "sens_mono"
+  ))
+  
+  if (!needs_models) {
+    return(model_list)
+  }
+  
+  # ML models only for estimators aipw, tmle, sensitivity
+  if (ml && any(method %in% c("aipw", "tmle", "sens_cw", "sens_mono"))) {
+    
+    model_list$ml_models <- fit_one_ml(
+      data = data,
+      Y_name = Y_name,
+      Z_name = Z_name,
+      X_name = X_name,
+      S_name = S_name,
+      estimand = estimand,
+      method = method,
+      exclusion_restriction = exclusion_restriction,
+      cross_world = cross_world,
+      Y_Z_X_library = Y_Z_X_library,
+      Y_X_library = Y_X_library,
+      S_X_library = S_X_library,
+      S_Z_X_library = S_Z_X_library,
+      Z_X_library = Z_X_library,
+      family = family,
+      v_folds = v_folds
+    )
+  }
+  
+  # GLM models for gcomp/ipw, or for everything if ml = FALSE
+  if (!ml || any(method %in% c("gcomp", "ipw"))) {
+    
+    model_list$models <- fit_one_glm(
+      data = data,
+      Y_name = Y_name,
+      Z_name = Z_name,
+      X_name = X_name,
+      S_name = S_name,
+      estimand = estimand,
+      method = method,
+      exclusion_restriction = exclusion_restriction,
+      cross_world = cross_world,
+      Y_Z_X_model = Y_Z_X_model,
+      Y_X_S1_model = Y_X_S1_model,
+      Y_X_S0_model = Y_X_S0_model,
+      S_X_model = S_X_model,
+      S_Z_X_model = S_Z_X_model,
+      Z_X_model = Z_X_model,
+      family = family
+    )
+  }
+  
+  model_list
+}
+
+
+#' Fit nuisance models using cross-fitting
+#'
+#' Fits the nuisance models required for the requested estimands and estimation
+#' methods using sample splitting. The data are partitioned into cross-fitting
+#' folds; for each fold, all required nuisance models are fit on the observations
+#' outside that fold. The fitted models are then reorganized by nuisance model
+#' type so that out-of-fold predictions can be obtained using
+#' \code{\link{predict.cross_fit}}.
+#'
+#' @param data A \code{data.frame} containing the observed data.
+#' @param id_name Optional character string giving the name of a unique subject
+#'   identifier in \code{data}. If \code{NULL}, an internal identifier is created
+#'   using the row order of \code{data}.
+#' @param Y_name Character string giving the name of the outcome variable.
+#'   Default is \code{"G"}.
+#' @param Z_name Character string giving the name of the treatment variable.
+#'   Default is \code{"Z"}.
+#' @param X_name Character vector giving the names of baseline covariates.
+#'   Default is \code{"X"}.
+#' @param S_name Character string giving the name of the intermediate variable,
+#'   such as infection status. Default is \code{"S"}.
+#' @param estimand Character vector specifying estimands of interest. Options
+#'   include \code{"nat_inf"} for the naturally infected estimand,
+#'   \code{"doomed"} for the doomed estimand, and \code{"pop"} for the
+#'   population-level estimand.
+#' @param method Character vector specifying estimation methods. Options include
+#'   \code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"tmle"},
+#'   \code{"bound"}, \code{"cov_adj_bound"}, \code{"sens_cw"}, and
+#'   \code{"sens_mono"}.
+#' @param exclusion_restriction Logical vector indicating whether the exclusion
+#'   restriction is assumed.
+#' @param cross_world Logical vector indicating whether cross-world assumptions
+#'   are invoked.
+#' @param seed Numeric seed used to randomly assign observations to
+#'   cross-fitting folds.
+#' @param ml Logical; whether to fit machine learning nuisance models using
+#'   \code{SuperLearner}. If \code{FALSE}, only parametric generalized linear
+#'   models are fit when required.
+#' @param Y_Z_X_model Optional formula for the outcome regression
+#'   \eqn{E[Y \mid Z, X]}. If \code{NULL}, the default formula is constructed
+#'   from \code{Y_name}, \code{Z_name}, and \code{X_name}.
+#' @param Y_X_S1_model Optional formula for outcome regressions among
+#'   observations with \eqn{S = 1}.
+#' @param Y_X_S0_model Optional formula for outcome regressions among
+#'   observations with \eqn{S = 0}.
+#' @param S_X_model Optional formula for models of \eqn{P(S = 1 \mid X)}.
+#' @param S_Z_X_model Optional formula for models of
+#'   \eqn{P(S = 1 \mid Z, X)}, used for sensitivity analyses.
+#' @param Z_X_model Formula for the treatment model
+#'   \eqn{P(Z = 1 \mid X)}. Default is an intercept-only model.
+#' @param Y_Z_X_library Character vector of \code{SuperLearner} libraries for
+#'   the outcome model \eqn{E[Y \mid Z, X]}.
+#' @param Y_X_library Character vector of \code{SuperLearner} libraries for
+#'   outcome models conditional on \eqn{X}.
+#' @param S_X_library Character vector of \code{SuperLearner} libraries for
+#'   models of \eqn{P(S = 1 \mid X)}.
+#' @param S_Z_X_library Character vector of \code{SuperLearner} libraries for
+#'   models of \eqn{P(S = 1 \mid Z, X)}.
+#' @param Z_X_library Character vector of \code{SuperLearner} libraries for
+#'   models of \eqn{P(Z = 1 \mid X)}.
+#' @param family Family for outcome regression models. Passed to \code{glm} or
+#'   \code{SuperLearner}. Default is \code{"gaussian"}.
+#' @param v_folds Integer; number of internal cross-validation folds used by
+#'   \code{SuperLearner}. Default is 3.
+#' @param cf_folds Integer; number of cross-fitting folds. Must be at least 2.
+#'   Default is 5.
+#'
+#' @details
+#' Cross-fitting separates nuisance model training from nuisance prediction. For
+#' each validation fold, models are fit using all observations not in that fold.
+#' The returned object stores fold-specific models in a format that allows
+#' \code{predict.cross_fit()} to return out-of-fold predictions for each
+#' observation.
+#'
+#' The returned \code{fold_assignments} object contains:
+#' \describe{
+#'   \item{\code{id}}{The subject identifier used for fold matching.}
+#'   \item{\code{idx}}{The original row index in \code{data}.}
+#'   \item{\code{validation_fold}}{The validation fold assigned to each row.}
+#' }
+#'
+#' @return An object of class \code{"cross_fit_models"}, which is a list with
+#'   components:
+#' \describe{
+#'   \item{\code{models}}{Cross-fitted parametric nuisance models, or
+#'   \code{NULL} if no parametric models were fit.}
+#'   \item{\code{ml_models}}{Cross-fitted machine learning nuisance models, or
+#'   \code{NULL} if no machine learning models were fit.}
+#'   \item{\code{fold_assignments}}{A \code{data.frame} mapping observations to
+#'   validation folds.}
+#' }
+#'
+#' @seealso \code{\link{fit_models}}, \code{\link{reorg_cross_fit_models}},
+#'   \code{\link{predict.cross_fit}}
+#'
+#' @export
+cross_fit_models <- function(data,
+                             id_name = NULL,
+                             Y_name = "G",
+                             Z_name = "Z",
+                             X_name = "X",
+                             S_name = "S",
+                             estimand = c("nat_inf", "doomed", "pop"),
+                             method = c("gcomp", "ipw", "aipw", "tmle",
+                                        "bound", "cov_adj_bound", "sens_cw", "sens_mono"),
+                             exclusion_restriction = c(TRUE, FALSE),
+                             cross_world = c(TRUE, FALSE),
+                             seed = 12345,
+                             ml = TRUE,
+                             Y_Z_X_model = NULL,
+                             Y_X_S1_model = NULL,
+                             Y_X_S0_model = NULL,
+                             S_X_model = NULL,
+                             S_Z_X_model = NULL,
+                             Z_X_model = paste0(Z_name, " ~ 1"),
+                             Y_Z_X_library = c("SL.glm"),
+                             Y_X_library = c("SL.glm"),
+                             S_X_library = c("SL.glm"),
+                             S_Z_X_library = c("SL.glm"),
+                             Z_X_library = c("SL.mean"),
+                             family = "gaussian",
+                             v_folds = 3,
+                             cf_folds = 5) {
+  
+  set.seed(seed)
+  
+  # split into cf_folds equal sized validation folds and randomly shuffle
+  if(cf_folds > 1){
+    folds <- cut(seq(1,nrow(data)),breaks=cf_folds,labels=FALSE)
+    folds <- sample(folds)
+    
+    fold_assignments <- data.frame(
+      id = data[[id_name]],
+      idx = data$.vaxstrat_idx,
+      validation_fold = folds
+    )
+    
+  } else{
+    stop("cf_folds must be at least 2 for cross-fitting.")
+  }
+  
+  # make training data and fit models
+  cross_fit_model_list <- vector("list", length = cf_folds)
+  for(k in 1:cf_folds){
+    validation_idx <- fold_assignments$idx[
+      fold_assignments$validation_fold == k
+    ]
+    
+    training_data <- data[
+      !(data$.vaxstrat_idx %in% validation_idx),
+      ,
+      drop = FALSE
+    ]
+    
+    cross_fit_model_list[[k]] <- fit_models(
+      data = training_data,
+      Y_name = Y_name,
+      Z_name = Z_name,
+      X_name = X_name,
+      S_name = S_name,
+      estimand = estimand,
+      method = method,
+      exclusion_restriction = exclusion_restriction,
+      cross_world = cross_world,
+      ml = ml,
+      Y_Z_X_model = Y_Z_X_model,
+      Y_X_S1_model = Y_X_S1_model,
+      Y_X_S0_model = Y_X_S0_model,
+      S_X_model = S_X_model,
+      S_Z_X_model = S_Z_X_model,
+      Z_X_model = Z_X_model,
+      Y_Z_X_library = Y_Z_X_library,
+      Y_X_library = Y_X_library,
+      S_X_library = S_X_library,
+      S_Z_X_library = S_Z_X_library,
+      Z_X_library = Z_X_library,
+      family = family,
+      v_folds = v_folds
+    )
+  }
+  
+  # reorganize by model type
+  reorg_cross_fit <- reorg_cross_fit_models(fold_models = cross_fit_model_list,
+                                            fold_assignments = fold_assignments,
+                                            id_name = id_name)
+
+  out <- list(models = reorg_cross_fit$models,
+              ml_models = reorg_cross_fit$ml_models, 
+              fold_assignments = fold_assignments)
+  
+  class(out) <- "cross_fit_models"
+  
+  return(out)
+}
+
+#' Reorganize fitted cross-fit models by model type
+#'
+#' Converts a list organized as:
+#'
+#' fold -> model source -> model type
+#'
+#' into:
+#'
+#' model source -> model type -> fold-specific models
+#'
+#' Each model-type object is assigned class `"cross_fit"` and contains the
+#' corresponding fold assignments needed for out-of-fold prediction.
+#'
+#' @param fold_models A list of fitted model collections, with one element
+#'   per cross-fitting fold.
+#' @param fold_assignments A data.frame containing columns `id` and
+#'   `validation_fold`.
+#' @param id_name Character; name of the ID column expected in prediction data.
+#'
+#' @return A list containing model collections organized by model type.
+#'
+reorg_cross_fit_models <- function(fold_models,
+                                    fold_assignments,
+                                    id_name) {
+  
+  model_types <- c("models", "ml_models")
+  
+  out <- stats::setNames(
+    vector("list", length(model_types)),
+    model_types
+  )
+  
+  for (mtype in model_types) {
+    
+    # Determine which nuisance models were fit under this type
+    model_names <- unique(unlist(
+      lapply(
+        fold_models,
+        function(x) {
+          if (is.null(x[[mtype]])) {
+            return(NULL)
+          }
+          
+          names(x[[mtype]])
+        }
+      ),
+      use.names = FALSE
+    ))
+    
+    if (length(model_names) == 0L) {
+      out[[mtype]] <- NULL
+      next
+    }
+    
+    out[[mtype]] <- stats::setNames(
+      vector("list", length(model_names)),
+      model_names
+    )
+    
+    for (model_name in model_names) {
+      
+      fold_specific_models <- lapply(
+        fold_models,
+        function(x) {
+          if (is.null(x[[mtype]])) {
+            return(NULL)
+          }
+          
+          x[[mtype]][[model_name]]
+        }
+      )
+      
+      names(fold_specific_models) <- 1:length(fold_specific_models)
+      
+      cross_fit_model <- list(fold_specific_models = fold_specific_models, 
+                              fold_assignments = fold_assignments,
+                              id_name = id_name)
+      
+      class(cross_fit_model) <- "cross_fit"
+      
+      out[[mtype]][[model_name]] <- cross_fit_model
+    }
+  }
+  
+  out
 }
 

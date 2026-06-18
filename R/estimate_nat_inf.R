@@ -42,7 +42,7 @@ do_unadj_nat_inf <- function(
 #' using g-computation under specified identification assumptions.
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models returned by \code{fit_models}.
+#' @param model_list A named list of fitted nuisance models returned by \code{fit_models}.
 #' @param Z_name Character string specifying the treatment variable.
 #' @param X_name Character vector of covariate names.
 #' @param exclusion_restriction Logical; whether the exclusion restriction assumption is imposed.
@@ -63,10 +63,12 @@ do_unadj_nat_inf <- function(
 #'
 #' @export
 do_gcomp_nat_inf <- function(
-  data, models, Z_name = NULL, X_name = NULL,
+  data, model_list, Z_name = NULL, X_name = NULL,
   exclusion_restriction = FALSE,
   cross_world = TRUE,
   two_part_model = FALSE){
+  
+  models <- model_list$models
   
   if(!exclusion_restriction & cross_world){
     # Psi_1 = E[P(S=1 | Z = 0, X) / P(Y = 1 | Z = 0) * E[Y | Z=1, X] ]
@@ -179,7 +181,7 @@ do_gcomp_nat_inf <- function(
 #' probability weighting (IPW).
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models.
+#' @param model_list A named list of fitted nuisance models.
 #' @param exclusion_restriction Logical; whether the exclusion restriction assumption is imposed.
 #' @param S_name Character string specifying the infection indicator.
 #' @param Y_name Character string specifying the outcome variable.
@@ -197,10 +199,12 @@ do_gcomp_nat_inf <- function(
 #'   \item{psi_0}{Estimated mean outcome under control.}
 #' }
 do_ipw_nat_inf <- function(
-    data, models,
+    data, model_list,
     exclusion_restriction = FALSE,
     S_name, Y_name, Z_name
 ){
+  
+  models <- model_list$models
   
   if(!exclusion_restriction){
     # Psi_1 = E[P(S=1 | Z = 0, X) / P(Y = 1 | Z = 0) * E[Y | Z=1, X] ]  
@@ -260,7 +264,7 @@ do_ipw_nat_inf <- function(
 #' naturally infected principal stratum.
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models.
+#' @param model_list A named list of fitted nuisance models.
 #' @param Y_name Character string specifying the outcome variable. Default is "Y".
 #' @param Z_name Character string specifying the treatment variable. Default is "Z".
 #' @param S_name Character string specifying the infection indicator. Default is "S".
@@ -286,7 +290,7 @@ do_ipw_nat_inf <- function(
 #'
 #' @export
 do_aipw_nat_inf <- function(
-  data, models,
+  data, model_list,
   exclusion_restriction = FALSE,
   cross_world = TRUE,
   Y_name = "Y",
@@ -296,6 +300,12 @@ do_aipw_nat_inf <- function(
   return_se = FALSE,
   two_part_model = FALSE
 ){
+  
+  if(!is.null(model_list$ml_models)){
+    models <- model_list$ml_models
+  } else{
+    models <- model_list$models
+  }
   
   if(cross_world & !exclusion_restriction){
     rho_0 <- simple_predict(models$fit_S_Z0_X, newdata = data)
@@ -501,7 +511,7 @@ do_aipw_nat_inf <- function(
 #' naturally infected principal stratum.
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models.
+#' @param model_list A named list of fitted nuisance models.
 #' @param exclusion_restriction Logical; currently not supported.
 #' @param Y_name Character string specifying the outcome variable.
 #' @param Z_name Character string specifying the treatment variable.
@@ -518,12 +528,18 @@ do_aipw_nat_inf <- function(
 #' A named numeric vector containing the additive and log multiplicative effects.
 #' If \code{return_se = TRUE}, standard errors and component estimates are included.
 do_tmle_nat_inf <- function(
-    data, models, 
+    data, model_list, 
     exclusion_restriction = FALSE,
     Y_name = "Y", Z_name = "Z", S_name = "S",
     return_se = FALSE, max_iter = 10,
     tol = 1 / (sqrt(dim(data)[1]) * log(dim(data)[1]))
 ){
+  
+  if(!is.null(model_list$ml_models)){
+    models <- model_list$ml_models
+  } else{
+    models <- model_list$models
+  }
   
   if(exclusion_restriction){
     stop("TMLE with exclusion restriction not implemented yet")
@@ -808,7 +824,7 @@ do_tmle_nat_inf <- function(
 #' a parameter \eqn{\epsilon}.
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models.
+#' @param model_list A named list of fitted nuisance models.
 #' @param Y_name Character string specifying the outcome variable.
 #' @param Z_name Character string specifying the treatment variable.
 #' @param S_name Character string specifying the infection indicator.
@@ -826,14 +842,18 @@ do_tmle_nat_inf <- function(
 #' 
 #' @export
 do_sens_cw_aipw_nat_inf <- function(data,
-                                   models,
+                                   model_list,
                                    Y_name = "Y",
                                    Z_name = "Z",
                                    S_name = "S",
                                    epsilon = exp(seq(log(0.5), log(2), length = 49)),
                                    return_se = FALSE){
   
-  
+  if(!is.null(model_list$ml_models)){
+    models <- model_list$ml_models
+  } else{
+    models <- model_list$models
+  }
   
   pi_1 <- simple_predict(models$fit_Z_X, newdata = data)
   
@@ -985,7 +1005,7 @@ do_sens_cw_aipw_nat_inf <- function(data,
 #' a parameter \eqn{\epsilon}.
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models.
+#' @param model_list A named list of fitted nuisance models.
 #' @param Y_name Character string specifying the outcome variable.
 #' @param Z_name Character string specifying the treatment variable.
 #' @param S_name Character string specifying the infection indicator.
@@ -998,12 +1018,18 @@ do_sens_cw_aipw_nat_inf <- function(data,
 #' 
 #' @export
 do_sens_mono_nat_inf <- function(data,
-                                 models,
+                                 model_list,
                                  Y_name = "Y",
                                  Z_name = "Z",
                                  S_name = "S",
                                  epsilon = exp(seq(log(0.5), log(2), length = 49))
                                  ){
+  
+  if(!is.null(model_list$ml_models)){
+    models <- model_list$ml_models
+  } else{
+    models <- model_list$models
+  }
   
   # ---------------------------------------
   # Get bounds on p

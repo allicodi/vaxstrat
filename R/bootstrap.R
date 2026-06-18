@@ -86,12 +86,25 @@ one_boot <- function(
     epsilon = exp(seq(log(0.5), log(2), length = 50)),
     max_resample = 10,
     return_se = TRUE,
-    two_part_model = FALSE
+    two_part_model = FALSE,
+    id_name = NULL,
+    cross_fit = FALSE,
+    cf_folds = 5
 ){
   
+  # initial resampling
   n <- dim(data)[1]
   boot_row_idx <- sample(1:n, replace=TRUE)
   boot_data <- data[boot_row_idx,]
+  
+  boot_data$.vaxstrat_idx <- seq_len(nrow(boot_data))
+  
+  if (is.null(id_name)) {
+    boot_data$.vaxstrat_id <- boot_data$.vaxstrat_idx
+    boot_id_name <- ".vaxstrat_id"
+  } else {
+    boot_id_name <- id_name
+  }
   
   # If there are more infections in vaccine arm than placebo arm, resample up to max_resample 
   rhobar_0_n <- mean(boot_data[[S_name]][boot_data[[Z_name]] == 0])
@@ -102,6 +115,15 @@ one_boot <- function(
     boot_row_idx <- sample(1:n, replace=TRUE)
     boot_data <- data[boot_row_idx,]
     
+    boot_data$.vaxstrat_idx <- seq_len(nrow(boot_data))
+    
+    if (is.null(id_name)) {
+      boot_data$.vaxstrat_id <- boot_data$.vaxstrat_idx
+      boot_id_name <- ".vaxstrat_id"
+    } else {
+      boot_id_name <- id_name
+    }
+    
     rhobar_0_n <- mean(boot_data[[S_name]][boot_data[[Z_name]] == 0])
     rhobar_1_n <- mean(boot_data[[S_name]][boot_data[[Z_name]] == 1])
     resample <- resample + 1
@@ -111,71 +133,68 @@ one_boot <- function(
     stop(paste0("Exceeded max_resample of ", max_resample, "for given bootstrap replicate"))
   }
   
-  # compute estimators using bootstrap data set
-  if(ml){
-    
-    if(any(method %in% c("aipw", "tmle", "sens")) & return_se == FALSE){
-      boot_ml_models <- vaxstrat::fit_ml_models(data = boot_data, 
-                                                 estimand = estimand,
-                                                 method = method, 
-                                                 exclusion_restriction = exclusion_restriction,
-                                                 cross_world = cross_world,
-                                                 Y_name = Y_name,
-                                                 Z_name = Z_name,
-                                                 S_name = S_name,
-                                                 X_name = X_name,
-                                                 Y_Z_X_library = Y_Z_X_library,
-                                                 Y_X_library = Y_X_library,
-                                                 S_X_library = S_X_library,
-                                                 S_Z_X_library = S_Z_X_library,
-                                                 Z_X_library = Z_X_library,
-                                                 family = family,
-                                                 v_folds = v_folds)
+  # Any method requiring model fitting
+  if(any(method %in% c("gcomp", "ipw")) | any(method %in% c("aipw", "tmle", "sens_cw", "sens_mono") & return_se == FALSE)){
+    if (cross_fit) {
+      
+      model_list <- cross_fit_models(
+        data = data,
+        id_name = id_name,
+        Y_name = Y_name,
+        Z_name = Z_name,
+        X_name = X_name,
+        S_name = S_name,
+        estimand = estimand,
+        method = method,
+        exclusion_restriction = exclusion_restriction,
+        cross_world = cross_world,
+        seed = seed,
+        ml = ml,
+        Y_Z_X_model = Y_Z_X_model,
+        Y_X_S1_model = Y_X_S1_model,
+        Y_X_S0_model = Y_X_S0_model,
+        S_X_model = S_X_model,
+        S_Z_X_model = S_Z_X_model,
+        Z_X_model = Z_X_model,
+        Y_Z_X_library = Y_Z_X_library,
+        Y_X_library = Y_X_library,
+        S_X_library = S_X_library,
+        S_Z_X_library = S_Z_X_library,
+        Z_X_library = Z_X_library,
+        family = family,
+        v_folds = v_folds,
+        cf_folds = cf_folds
+      )
+      
+    } else {
+      
+      model_list <- fit_models(
+        data = data,
+        Y_name = Y_name,
+        Z_name = Z_name,
+        X_name = X_name,
+        S_name = S_name,
+        estimand = estimand,
+        method = method,
+        exclusion_restriction = exclusion_restriction,
+        cross_world = cross_world,
+        ml = ml,
+        Y_Z_X_model = Y_Z_X_model,
+        Y_X_S1_model = Y_X_S1_model,
+        Y_X_S0_model = Y_X_S0_model,
+        S_X_model = S_X_model,
+        S_Z_X_model = S_Z_X_model,
+        Z_X_model = Z_X_model,
+        Y_Z_X_library = Y_Z_X_library,
+        Y_X_library = Y_X_library,
+        S_X_library = S_X_library,
+        S_Z_X_library = S_Z_X_library,
+        Z_X_library = Z_X_library,
+        family = family,
+        v_folds = v_folds
+      )
     } 
-    
-    if(any(method %in% c("gcomp", "ipw"))){
-      boot_models <- vaxstrat::fit_models(data = boot_data, 
-                                          estimand = estimand,
-                                          method = method, 
-                                          exclusion_restriction = exclusion_restriction,
-                                          cross_world = cross_world,
-                                          Y_name = Y_name,
-                                          Z_name = Z_name,
-                                          S_name = S_name,
-                                          X_name = X_name,
-                                          Y_Z_X_model = Y_Z_X_model,
-                                          Y_X_S1_model = Y_X_S1_model,
-                                          Y_X_S0_model = Y_X_S0_model,
-                                          S_X_model = S_X_model,
-                                          S_Z_X_model = S_Z_X_model,
-                                          Z_X_model = Z_X_model,
-                                          family = family)
-    }
-    
-  } else{
-    # GLMS for all
-    if(any(method %in% c("gcomp", "ipw", "aipw", "tmle", "sens"))){
-      boot_models <- vaxstrat::fit_models(data = boot_data, 
-                                          estimand = estimand,
-                                          method = method, 
-                                          exclusion_restriction = exclusion_restriction,
-                                          cross_world = cross_world,
-                                          Y_name = Y_name,
-                                          Z_name = Z_name,
-                                          S_name = S_name,
-                                          X_name = X_name,
-                                          Y_Z_X_model = Y_Z_X_model,
-                                          Y_X_S1_model = Y_X_S1_model,
-                                          Y_X_S0_model = Y_X_S0_model,
-                                          S_X_model = S_X_model,
-                                          S_Z_X_model = S_Z_X_model,
-                                          Z_X_model = Z_X_model,
-                                          family = family)
-    }
-    
-    # Otherwise for bounds only no models needed
-    
-  } 
+  }
   
   out <- vector("list", length = length(estimand))
   names(out) <- estimand
@@ -191,7 +210,7 @@ one_boot <- function(
       
       if("ipw" %in% method){
         estimator <- paste0("ipw", er_suffix)
-        out$nat_inf[[estimator]] <- do_ipw_nat_inf(data = boot_data, models = boot_models, S_name = S_name, Y_name = Y_name, Z_name = Z_name, exclusion_restriction = er)
+        out$nat_inf[[estimator]] <- do_ipw_nat_inf(data = boot_data, model_list = model_list, S_name = S_name, Y_name = Y_name, Z_name = Z_name, exclusion_restriction = er)
       }
       
       # Cross-world assumption can be toggled for AIPW only at this point
@@ -204,7 +223,7 @@ one_boot <- function(
         
         if("gcomp" %in% method){
           estimator <- paste0("gcomp", er_suffix, cw_suffix)
-          out$nat_inf[[estimator]] <- do_gcomp_nat_inf(data = boot_data, models = boot_models, Z_name = Z_name, X_name = X_name, exclusion_restriction = er, cross_world = cw, two_part_model = two_part_model)
+          out$nat_inf[[estimator]] <- do_gcomp_nat_inf(data = boot_data, model_list = model_list, Z_name = Z_name, X_name = X_name, exclusion_restriction = er, cross_world = cw, two_part_model = two_part_model)
         }
         
         # if we want bootstrap SE for AIPW (otherwise return closed form SE when we get point estimate)
@@ -213,7 +232,7 @@ one_boot <- function(
           if(ml){
             out$nat_inf[[estimator]] <- do_aipw_nat_inf(data = boot_data, models = boot_ml_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, X_name = X_name, return_se = return_se, exclusion_restriction = er, cross_world = cw, two_part_model = two_part_model)
           } else{
-            out$nat_inf[[estimator]] <- do_aipw_nat_inf(data = boot_data, models = boot_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, X_name = X_name, return_se = return_se, exclusion_restriction = er, cross_world = cw, two_part_model = two_part_model)
+            out$nat_inf[[estimator]] <- do_aipw_nat_inf(data = boot_data, model_list = model_list, Y_name = Y_name, Z_name = Z_name, S_name = S_name, X_name = X_name, return_se = return_se, exclusion_restriction = er, cross_world = cw, two_part_model = two_part_model)
           }
         }
       }
@@ -225,7 +244,7 @@ one_boot <- function(
       if(ml){
         out$nat_inf$tmle <- do_tmle_nat_inf(data = boot_data, models = boot_ml_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
       } else{
-        out$nat_inf$tmle <- do_tmle_nat_inf(data = boot_data, models = boot_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
+        out$nat_inf$tmle <- do_tmle_nat_inf(data = boot_data, model_list = model_list, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
       }
     }
     
@@ -233,7 +252,7 @@ one_boot <- function(
       if(ml){
         out$nat_inf$sens<- do_sens_aipw_nat_inf(data = boot_data, models = boot_ml_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, epsilon = epsilon, return_se = return_se)
       } else{
-        out$nat_inf$sens <- do_sens_aipw_nat_inf(data = boot_data, models = boot_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, epsilon = epsilon, return_se = return_se)
+        out$nat_inf$sens <- do_sens_aipw_nat_inf(data = boot_data, model_list = model_list, Y_name = Y_name, Z_name = Z_name, S_name = S_name, epsilon = epsilon, return_se = return_se)
       }
     }
     
@@ -253,18 +272,18 @@ one_boot <- function(
   if("doomed" %in% estimand){
     
     if("gcomp" %in% method){
-      out$doomed$gcomp <- do_gcomp_doomed(data = boot_data, models = boot_models)
+      out$doomed$gcomp <- do_gcomp_doomed(data = boot_data, model_list = model_list)
     }
     
     if("ipw" %in% method){
-      out$doomed$ipw <- do_ipw_doomed(data = boot_data, models = boot_models, S_name = S_name, Y_name = Y_name, Z_name = Z_name)
+      out$doomed$ipw <- do_ipw_doomed(data = boot_data, model_list = model_list, S_name = S_name, Y_name = Y_name, Z_name = Z_name)
     }
     
     if("aipw" %in% method & return_se == FALSE){
       if(ml){
         out$doomed$aipw <- do_aipw_doomed(data = boot_data, models = boot_ml_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
       } else{
-        out$doomed$aipw <- do_aipw_doomed(data = boot_data, models = boot_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
+        out$doomed$aipw <- do_aipw_doomed(data = boot_data, model_list = model_list, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
       }
     }
     
@@ -279,18 +298,18 @@ one_boot <- function(
   if("pop" %in% estimand){
     
     if("gcomp" %in% method){
-      out$pop$gcomp <- do_gcomp_pop(data = boot_data, models = boot_models, Z_name = Z_name, X_name = X_name)
+      out$pop$gcomp <- do_gcomp_pop(data = boot_data, model_list = model_list, Z_name = Z_name, X_name = X_name)
     }
     
     if("ipw" %in% method){
-      out$pop$ipw <- do_ipw_pop(data = boot_data, models = boot_models, Y_name = Y_name, Z_name = Z_name)
+      out$pop$ipw <- do_ipw_pop(data = boot_data, model_list = model_list, Y_name = Y_name, Z_name = Z_name)
     }
     
     if("aipw" %in% method & return_se == FALSE){
       if(ml){
         out$pop$aipw <- do_aipw_pop(data = boot_data, models = boot_ml_models, Z_name = Z_name, Y_name = Y_name, X_name = X_name, return_se = return_se, two_part_model = two_part_model)
       } else{
-        out$pop$aipw <- do_aipw_pop(data = boot_data, models = boot_models, Z_name = Z_name, Y_name = Y_name, X_name = X_name, return_se = return_se, two_part_model = two_part_model)
+        out$pop$aipw <- do_aipw_pop(data = boot_data, model_list = model_list, Z_name = Z_name, Y_name = Y_name, X_name = X_name, return_se = return_se, two_part_model = two_part_model)
       }
     }
     
@@ -378,7 +397,10 @@ bootstrap_estimates <- function(
     effect_dir = "positive",
     epsilon = exp(seq(log(0.5), log(2), length = 50)),
     return_se = TRUE,
-    two_part_model = FALSE
+    two_part_model = FALSE,
+    id_name = NULL,
+    cross_fit = FALSE,
+    cf_folds = 5
 ){
   
   # Initial boot_estimates for all viable estimand & method combinations
@@ -407,7 +429,10 @@ bootstrap_estimates <- function(
                                                family = family,
                                                epsilon = epsilon,
                                                return_se = return_se,
-                                               two_part_model = two_part_model), simplify = FALSE)
+                                               two_part_model = two_part_model, 
+                                               id_name = id_name,
+                                               cross_fit = cross_fit,
+                                               cf_folds = cf_folds), simplify = FALSE)
     # List to store results
     out <- vector("list", length = length(estimand))
     names(out) <- estimand

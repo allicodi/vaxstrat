@@ -4,12 +4,12 @@
 \alias{do_gcomp_doomed}
 \title{G-computation for the doomed principal stratum}
 \usage{
-do_gcomp_doomed(data, models)
+do_gcomp_doomed(data, model_list)
 }
 \arguments{
 \item{data}{A \code{data.frame} containing the dataset to predict on.}
 
-\item{models}{A list of pre-fitted models as returned by \code{fit_models()}
+\item{model_list}{A list of pre-fitted models as returned by \code{fit_models()}
 or \code{fit_ml_models()}.}
 }
 \value{

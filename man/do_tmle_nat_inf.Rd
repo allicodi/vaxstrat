@@ -6,7 +6,7 @@
 \usage{
 do_tmle_nat_inf(
   data,
-  models,
+  model_list,
   exclusion_restriction = FALSE,
   Y_name = "Y",
   Z_name = "Z",
@@ -19,7 +19,7 @@ do_tmle_nat_inf(
 \arguments{
 \item{data}{A data.frame containing observed data.}
 
-\item{models}{A named list of fitted nuisance models.}
+\item{model_list}{A named list of fitted nuisance models.}
 
 \item{exclusion_restriction}{Logical; currently not supported.}
 

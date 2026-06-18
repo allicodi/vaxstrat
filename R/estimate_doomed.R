@@ -5,7 +5,7 @@
 #' using g-computation.
 #'
 #' @param data A \code{data.frame} containing the dataset to predict on.
-#' @param models A list of pre-fitted models as returned by \code{fit_models()}
+#' @param model_list A list of pre-fitted models as returned by \code{fit_models()}
 #' or \code{fit_ml_models()}.
 #'
 #' @returns A named numeric vector containing:
@@ -17,7 +17,9 @@
 #' }
 #' 
 #' @export
-do_gcomp_doomed <- function(data, models){
+do_gcomp_doomed <- function(data, model_list){
+  
+  models <- model_list$models
   
   # Psi_1 = E[P(S=1 | Z = 0, X) / P(S= 1 | Z = 0) * E[Y | Z=1, X] ]
   mu_11_X <- simple_predict(models$fit_Y_Z1_S1_X, newdata = data)
@@ -47,8 +49,7 @@ do_gcomp_doomed <- function(data, models){
 #' principal stratum using inverse probability weighting (IPW).
 #'
 #' @param data A \code{data.frame} containing the dataset to predict on.
-#' @param models A list of pre-fitted models as returned by \code{fit_models()}
-#' or \code{fit_ml_models()}.
+#' @param model_list A list of pre-fitted models as returned by \code{fit_models()}.
 #' @param S_name Character; name of the infection indicator variable.
 #' @param Y_name Character; name of the outcome variable.
 #' @param Z_name Character; name of the treatment variable.
@@ -63,9 +64,11 @@ do_gcomp_doomed <- function(data, models){
 #' 
 #' @export
 do_ipw_doomed <- function(
-    data, models,
+    data, model_list,
     S_name, Y_name, Z_name
 ){
+  
+  models <- model_list$models
   
   # Psi_1 = E[P(S=1 | Z = 0, X) / P(S= 1 | Z = 0) * E[Y | Z=1, X] ]
   
@@ -104,7 +107,7 @@ do_ipw_doomed <- function(
 #' or the treatment/infection models are correctly specified.
 #'
 #' @param data A \code{data.frame} containing the dataset to predict on.
-#' @param models A list of pre-fitted models as returned by \code{fit_models()}
+#' @param model_list A list of pre-fitted models as returned by \code{fit_models()}
 #' or \code{fit_ml_models()}.
 #' @param Y_name Character; name of the outcome variable. Default is \code{"Y"}.
 #' @param Z_name Character; name of the treatment variable. Default is \code{"Z"}.
@@ -131,12 +134,17 @@ do_ipw_doomed <- function(
 #' 
 #' @export
 do_aipw_doomed <- function(data, 
-                           models,
+                           model_list,
                            Y_name = "Y",
                            Z_name = "Z",
                            S_name = "S",
                            return_se = FALSE){
   
+  if(!is.null(model_list$ml_models)){
+    models <- model_list$ml_models
+  } else{
+    models <- model_list$models
+  }
   
   mu_11_X <- simple_predict(models$fit_Y_Z1_S1_X, newdata = data)
   mu_01_X <- simple_predict(models$fit_Y_Z0_S1_X, newdata = data)

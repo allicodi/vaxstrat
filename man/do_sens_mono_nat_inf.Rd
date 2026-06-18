@@ -6,7 +6,7 @@
 \usage{
 do_sens_mono_nat_inf(
   data,
-  models,
+  model_list,
   Y_name = "Y",
   Z_name = "Z",
   S_name = "S",
@@ -16,7 +16,7 @@ do_sens_mono_nat_inf(
 \arguments{
 \item{data}{A data.frame containing observed data.}
 
-\item{models}{A named list of fitted nuisance models.}
+\item{model_list}{A named list of fitted nuisance models.}
 
 \item{Y_name}{Character string specifying the outcome variable.}
 

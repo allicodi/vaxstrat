@@ -2,25 +2,36 @@
 % Please edit documentation in R/utils.R
 \name{simple_predict}
 \alias{simple_predict}
-\title{Unified prediction helper for fitted models}
+\title{Unified prediction helper for fitted nuisance models}
 \usage{
 simple_predict(model, newdata)
 }
 \arguments{
-\item{model}{A fitted model object of class \code{"glm"} or \code{"SuperLearner"}.}
+\item{model}{A fitted model object of class \code{"glm"},
+\code{"SuperLearner"}, or \code{"cross_fit"}.}
 
-\item{newdata}{A \code{data.frame} containing covariate values at which predictions are computed.}
+\item{newdata}{A \code{data.frame} containing covariate values at which
+predictions are computed.}
 }
 \value{
 A numeric vector of predicted values corresponding to \code{newdata}.
 }
 \description{
-Generates predictions from supported model objects in a consistent way.
+Generates predictions from supported fitted model objects in a consistent
+way. Supported model classes are \code{"glm"}, \code{"SuperLearner"}, and
+\code{"cross_fit"}.
 }
 \details{
 This function standardizes prediction calls across supported model classes:
 \itemize{
-\item For \code{"glm"} objects, predictions are obtained using \code{type = "response"}.
-\item For \code{"SuperLearner"} objects, predictions are extracted from the \code{$pred} slot.
+\item For \code{"glm"} objects, predictions are obtained using
+\code{type = "response"}.
+\item For \code{"SuperLearner"} objects, predictions are obtained from
+\code{predict.SuperLearner()} and extracted from the \code{$pred} slot.
+\item For \code{"cross_fit"} objects, predictions are obtained using
+\code{\link{predict.cross_fit}}, yielding out-of-fold predictions.
 }
+}
+\seealso{
+\code{\link{predict.cross_fit}}
 }

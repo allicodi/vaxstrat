@@ -6,7 +6,7 @@
 \usage{
 do_gcomp_nat_inf(
   data,
-  models,
+  model_list,
   Z_name = NULL,
   X_name = NULL,
   exclusion_restriction = FALSE,
@@ -17,7 +17,7 @@ do_gcomp_nat_inf(
 \arguments{
 \item{data}{A data.frame containing observed data.}
 
-\item{models}{A named list of fitted nuisance models returned by \code{fit_models}.}
+\item{model_list}{A named list of fitted nuisance models returned by \code{fit_models}.}
 
 \item{Z_name}{Character string specifying the treatment variable.}
 
