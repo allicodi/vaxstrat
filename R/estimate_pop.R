@@ -8,7 +8,7 @@
 #' components conditional on an intermediate variable.
 #'
 #' @param data A data.frame containing the observed data.
-#' @param models A named list of fitted models required for estimation. Must include:
+#' @param model_list A named list of fitted models required for estimation. Must include:
 #' \describe{
 #'   \item{fit_Y_Z_X}{Outcome regression model \eqn{E[Y \mid Z, X]} (if `two_part_model = FALSE`)}
 #'   \item{fit_Y_Z0_S0_X, fit_Y_Z0_S1_X, fit_Y_Z1_S0_X, fit_Y_Z1_S1_X}{Outcome models for each (Z, S) combination (if `two_part_model = TRUE`)}
@@ -28,10 +28,13 @@
 #'
 #' @export
 do_gcomp_pop <- function(data, 
-                          models,
+                          model_list,
                           two_part_model = FALSE,
                           Z_name = "Z",
                           X_name = c("X")){
+  
+  models <- model_list$models
+  
   # E[Y(1) - Y(0)] = E[Y(1)] - E[Y(0)] = E[E[Y | Z = 1, X = x]] - E[E[Y | Z = 0, X = x]]
   
   df_Z1 <- data.frame(Z = 1, X = data[,colnames(data) %in% X_name, drop = FALSE])
@@ -76,7 +79,7 @@ do_gcomp_pop <- function(data,
 #'       E[Y(0)] = E\left[\frac{(1 - Z) Y}{P(Z = 0 \mid X)}\right]}
 #'
 #' @param data A data.frame containing the observed data.
-#' @param models A named list containing the propensity score model:
+#' @param model_list A named list containing the propensity score model:
 #' \describe{
 #'   \item{fit_Z_X}{Model for \eqn{P(Z = 1 \mid X)}}
 #' }
@@ -90,7 +93,9 @@ do_gcomp_pop <- function(data,
 #'   \item{psi_1}{Estimated mean outcome under treatment}
 #'   \item{psi_0}{Estimated mean outcome under control}
 #' }
-do_ipw_pop <- function(data, models, Z_name = "Z", Y_name = "Y"){
+do_ipw_pop <- function(data, model_list, Z_name = "Z", Y_name = "Y"){
+  
+  models <- model_list$models
   
   pi_1_X <- simple_predict(models$fit_Z_X, newdata = data)
   pi_0_X <- 1 - pi_1_X
@@ -122,7 +127,7 @@ do_ipw_pop <- function(data, models, Z_name = "Z", Y_name = "Y"){
 #' Supports both standard and two-part outcome models.
 #'
 #' @param data A data.frame containing the observed data.
-#' @param models A named list of fitted models required for estimation. Must include:
+#' @param model_list A named list of fitted models required for estimation. Must include:
 #' \describe{
 #'   \item{fit_Y_Z_X}{Outcome model \eqn{E[Y \mid Z, X]} (if `two_part_model = FALSE`)}
 #'   \item{fit_Z_X}{Treatment model \eqn{P(Z = 1 \mid X)}}
@@ -155,7 +160,7 @@ do_ipw_pop <- function(data, models, Z_name = "Z", Y_name = "Y"){
 #' @export
 do_aipw_pop <- function(
     data, 
-    models,
+    model_list,
     Z_name = "Z",
     X_name = c("X"),
     Y_name = "Y",
@@ -163,6 +168,11 @@ do_aipw_pop <- function(
     two_part_model = FALSE
 ){
   
+  if(!is.null(model_list$ml_models)){
+    models <- model_list$ml_models
+  } else{
+    models <- model_list$models
+  }
   
   if(!two_part_model){
     df_Z1 <- data.frame(Z = 1, X = data[,colnames(data) %in% X_name, drop = FALSE])

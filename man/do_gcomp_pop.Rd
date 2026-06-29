@@ -6,7 +6,7 @@
 \usage{
 do_gcomp_pop(
   data,
-  models,
+  model_list,
   two_part_model = FALSE,
   Z_name = "Z",
   X_name = c("X")
@@ -15,7 +15,7 @@ do_gcomp_pop(
 \arguments{
 \item{data}{A data.frame containing the observed data.}
 
-\item{models}{A named list of fitted models required for estimation. Must include:
+\item{model_list}{A named list of fitted models required for estimation. Must include:
 \describe{
 \item{fit_Y_Z_X}{Outcome regression model \eqn{E[Y \mid Z, X]} (if \code{two_part_model = FALSE})}
 \item{fit_Y_Z0_S0_X, fit_Y_Z0_S1_X, fit_Y_Z1_S0_X, fit_Y_Z1_S1_X}{Outcome models for each (Z, S) combination (if \code{two_part_model = TRUE})}

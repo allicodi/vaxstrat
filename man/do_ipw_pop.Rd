@@ -4,12 +4,12 @@
 \alias{do_ipw_pop}
 \title{Inverse probability weighting (IPW) estimator for population-average vaccine effect}
 \usage{
-do_ipw_pop(data, models, Z_name = "Z", Y_name = "Y")
+do_ipw_pop(data, model_list, Z_name = "Z", Y_name = "Y")
 }
 \arguments{
 \item{data}{A data.frame containing the observed data.}
 
-\item{models}{A named list containing the propensity score model:
+\item{model_list}{A named list containing the propensity score model:
 \describe{
 \item{fit_Z_X}{Model for \eqn{P(Z = 1 \mid X)}}
 }}

@@ -6,7 +6,7 @@
 \usage{
 do_ipw_nat_inf(
   data,
-  models,
+  model_list,
   exclusion_restriction = FALSE,
   S_name,
   Y_name,
@@ -16,7 +16,7 @@ do_ipw_nat_inf(
 \arguments{
 \item{data}{A data.frame containing observed data.}
 
-\item{models}{A named list of fitted nuisance models.}
+\item{model_list}{A named list of fitted nuisance models.}
 
 \item{exclusion_restriction}{Logical; whether the exclusion restriction assumption is imposed.}
 

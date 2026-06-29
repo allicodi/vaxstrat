@@ -6,7 +6,7 @@
 \usage{
 do_aipw_pop(
   data,
-  models,
+  model_list,
   Z_name = "Z",
   X_name = c("X"),
   Y_name = "Y",
@@ -17,7 +17,7 @@ do_aipw_pop(
 \arguments{
 \item{data}{A data.frame containing the observed data.}
 
-\item{models}{A named list of fitted models required for estimation. Must include:
+\item{model_list}{A named list of fitted models required for estimation. Must include:
 \describe{
 \item{fit_Y_Z_X}{Outcome model \eqn{E[Y \mid Z, X]} (if \code{two_part_model = FALSE})}
 \item{fit_Z_X}{Treatment model \eqn{P(Z = 1 \mid X)}}

@@ -1,22 +1,33 @@
-#' Unified prediction helper for fitted models
+#' Unified prediction helper for fitted nuisance models
 #'
-#' Generates predictions from supported model objects in a consistent way.
+#' Generates predictions from supported fitted model objects in a consistent
+#' way. Supported model classes are \code{"glm"}, \code{"SuperLearner"}, and
+#' \code{"cross_fit"}.
 #'
-#' @param model A fitted model object of class \code{"glm"} or \code{"SuperLearner"}.
-#' @param newdata A \code{data.frame} containing covariate values at which predictions are computed.
+#' @param model A fitted model object of class \code{"glm"},
+#'   \code{"SuperLearner"}, or \code{"cross_fit"}.
+#' @param newdata A \code{data.frame} containing covariate values at which
+#'   predictions are computed.
 #'
 #' @details
 #' This function standardizes prediction calls across supported model classes:
 #' \itemize{
-#'   \item For \code{"glm"} objects, predictions are obtained using \code{type = "response"}.
-#'   \item For \code{"SuperLearner"} objects, predictions are extracted from the \code{$pred} slot.
+#'   \item For \code{"glm"} objects, predictions are obtained using
+#'   \code{type = "response"}.
+#'   \item For \code{"SuperLearner"} objects, predictions are obtained from
+#'   \code{predict.SuperLearner()} and extracted from the \code{$pred} slot.
+#'   \item For \code{"cross_fit"} objects, predictions are obtained using
+#'   \code{\link{predict.cross_fit}}, yielding out-of-fold predictions.
 #' }
 #'
 #' @return A numeric vector of predicted values corresponding to \code{newdata}.
 #'
+#' @seealso \code{\link{predict.cross_fit}}
+#'
+#' @export
 simple_predict <- function(model, newdata){
-  if(!any(c("glm", "SuperLearner") %in% class(model))){
-    stop("method only guaranteed to work correctly with glm or super learner")
+  if(!any(c("glm", "SuperLearner", "cross_fit") %in% class(model))){
+    stop("method only guaranteed to work correctly with cross_fit, glm, or SuperLearner")
   }
   if( inherits(model, "SuperLearner") ){
     pred <- predict(model, newdata = newdata)$pred
@@ -27,6 +38,113 @@ simple_predict <- function(model, newdata){
 }
 
 
+#' Obtain out-of-fold predictions from a cross-fitted nuisance model
+#'
+#' Generates predictions from an object of class \code{"cross_fit"} by applying
+#' the fitted model for each fold to the observations assigned to that fold. This
+#' ensures that each prediction is obtained from a model that was not trained on
+#' the corresponding observation.
+#'
+#' @param object An object of class \code{"cross_fit"}, typically one nuisance
+#'   model component returned by \code{\link{cross_fit_models}} after
+#'   reorganization by \code{\link{reorg_cross_fit_models}}.
+#' @param newdata A \code{data.frame} containing covariate values at which
+#'   predictions are computed.
+#' @param fold_assignments Optional \code{data.frame} containing fold
+#'   assignments. If \code{NULL}, the fold assignments stored in \code{object}
+#'   are used.
+#' @param id_name Optional character string giving the identifier column in
+#'   \code{newdata}. If \code{NULL}, the identifier stored in \code{object} is
+#'   used. If the identifier is not present in \code{newdata}, predictions fall
+#'   back to matching on the original row index \code{idx}; this requires
+#'   \code{newdata} to have the same row order and number of rows as the data
+#'   used to fit the cross-fitted models.
+#' @param ... Additional arguments. Currently unused.
+#'
+#' @details
+#' For each cross-fitting fold, this method identifies the observations in
+#' \code{newdata} assigned to that fold and predicts using the corresponding
+#' fold-specific fitted model. Predictions are returned in the same row order as
+#' \code{newdata}.
+#'
+#' When \code{newdata} contains the original ID column, fold membership is
+#' determined using that ID. When \code{newdata} does not contain the original ID
+#' column, the function assumes that \code{newdata} is aligned with the original
+#' analysis data by row order and uses \code{idx} instead. This is useful for
+#' counterfactual prediction datasets, such as copies of the original data with
+#' treatment set to \eqn{Z = 1} or \eqn{Z = 0}, where the ID column may have been
+#' dropped.
+#'
+#' @return A numeric vector of predictions with length \code{nrow(newdata)}.
+#'
+#' @seealso \code{\link{cross_fit_models}},
+#'   \code{\link{reorg_cross_fit_models}}, \code{\link{simple_predict}}
+#'
+#' @method predict cross_fit
+#' @export
+predict.cross_fit <- function(object, newdata, fold_assignments = NULL, id_name = NULL, ...) {
+  
+  # Use fold assignments stored in object unless supplied
+  if (is.null(fold_assignments)) {
+    fold_assignments <- object$fold_assignments
+  }
+  
+  # Default to id_name stored in object
+  if (is.null(id_name)) {
+    id_name <- object$id_name
+  }
+  
+  # Decide whether to match prediction rows by id or idx
+  if (!is.null(id_name) && id_name %in% colnames(newdata)) {
+    
+    # Standard case: newdata has the original id column
+    pred_id_name <- id_name
+    fold_id_name <- "id"
+    
+  } else {
+    
+    # Fallback case: newdata does not have id_name, so assume rows correspond
+    # to the original data order and match using idx
+    newdata$idx <- seq_len(nrow(newdata))
+    pred_id_name <- "idx"
+    fold_id_name <- "idx"
+    
+    if (nrow(newdata) != nrow(fold_assignments)) {
+      stop(
+        "newdata does not contain id_name, so prediction falls back to idx. ",
+        "This only works when newdata has the same number of rows and order as the data used for cross-fitting."
+      )
+    }
+  }
+  
+  preds <- rep(NA_real_, nrow(newdata))
+  
+  for (k in seq_along(object$fold_specific_models)) {
+    
+    validation_keys <- fold_assignments[[fold_id_name]][
+      fold_assignments$validation_fold == k
+    ]
+    
+    validation_rows <- newdata[[pred_id_name]] %in% validation_keys
+    
+    if (!any(validation_rows)) {
+      next
+    }
+    
+    validation_data <- newdata[validation_rows, , drop = FALSE]
+    
+    preds[validation_rows] <- simple_predict(
+      object$fold_specific_models[[k]],
+      newdata = validation_data
+    )
+  }
+  
+  if (any(is.na(preds))) {
+    stop("Some rows did not receive predictions. Check id_name, idx, and fold_assignments.")
+  }
+  
+  return(preds)
+}
 
 #' Convert bootstrap results into a tidy data frame
 #'
@@ -38,7 +156,7 @@ simple_predict <- function(model, newdata){
 #' @param estimand Character string specifying the estimand of interest
 #'   (e.g., \code{"nat_inf"}, \code{"pop"}, \code{"doomed"}).
 #' @param method Character string specifying the estimation method
-#'   (e.g., \code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"bound"}, \code{"sens"}).
+#'   (e.g., \code{"gcomp"}, \code{"ipw"}, \code{"aipw"}, \code{"bound"}, \code{"sens_cw"}).
 #'
 #' @details
 #' Each bootstrap replicate is expected to be a nested list indexed by
@@ -62,7 +180,7 @@ make_boot_df <- function(boot_estimates, estimand = "nat_inf", method = "gcomp")
       # If it's just a single number, convert to named data frame
       if (is.atomic(row) && length(row) == 1) {
         row <- data.frame(estimate = row)
-      } else if(class(row) == "sens"){
+      } else if(class(row) == "sens_cw"){
         class(row) <- "data.frame"
       } else if (is.null(dim(row))) {
         row <- as.data.frame(t(row))
@@ -175,7 +293,7 @@ get_boot_se_bound <- function(boot_estimates, estimand = "nat_inf", method = "bo
 #'
 #' @param boot_estimates A list of bootstrap results.
 #' @param estimand Character string specifying the estimand.
-#' @param method Character string specifying the method (typically \code{"sens"}).
+#' @param method Character string specifying the method (typically \code{"sens_cw"}).
 #'
 #' @return A data.frame with one row per \eqn{\epsilon}, containing:
 #' \describe{
@@ -188,7 +306,7 @@ get_boot_se_bound <- function(boot_estimates, estimand = "nat_inf", method = "bo
 #'   \item{upper_ci_mult}{Upper CI (multiplicative scale).}
 #' }
 #'
-get_boot_se_sens <- function(boot_estimates, estimand = "nat_inf", method = "sens"){
+get_boot_se_sens_cw <- function(boot_estimates, estimand = "nat_inf", method = "sens_cw"){
   boot_df <- make_boot_df(boot_estimates = boot_estimates,
                           estimand = estimand,
                           method = method)
@@ -375,7 +493,7 @@ print.vaxstrat <- function(x, scale = "additive", ...) {
 #' Produces a line plot of estimated effects across values of the sensitivity
 #' parameter \eqn{\epsilon}.
 #'
-#' @param object An object of class \code{"sens"}.
+#' @param object An object of class \code{"sens_cw"}.
 #' @param se Logical; if TRUE, includes 95\% confidence bands.
 #' @param effect_type Character string specifying effect scale:
 #'   \code{"additive"} or \code{"multiplicative"}.
@@ -388,15 +506,15 @@ print.vaxstrat <- function(x, scale = "additive", ...) {
 #' @return Produces a \code{ggplot2} plot and returns it invisibly.
 #' @export
 #' 
-#' @method plot sens
-plot.sens <- function(
+#' @method plot sens_cw
+plot.sens_cw <- function(
   object, se = TRUE, effect_type = c("additive", "multiplicative"), 
   ...
 ) {
   effect_type <- match.arg(effect_type)
 
-  if (!inherits(object, "sens")) {
-    stop("Object must be of class 'sens'")
+  if (!inherits(object, "sens_cw")) {
+    stop("Object must be of class 'sens_cw'")
   }
 
   df <- object

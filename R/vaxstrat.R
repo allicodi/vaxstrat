@@ -9,6 +9,7 @@
 #' estimation (TMLE), bounds, and sensitivity analyses)
 #'
 #' @param data A data frame containing the analysis dataset.
+#' @param id_name Chatacter. (Optional) Name of id variable (e.g., pid). Used for cross-fitting fold assignments. 
 #' @param Y_name Character. Name of the outcome variable (e.g., growth).
 #' @param Z_name Character. Name of the treatment (vaccination) variable.
 #' @param X_name Character vector. Name(s) of baseline covariates.
@@ -51,6 +52,7 @@
 #' (AIPW/TMLE); otherwise uses bootstrap.
 #'
 #' @param ml Logical. If \code{TRUE}, uses SuperLearner for nuisance estimation in AIPW/TMLE.
+#' @param cross_fit Logical. If \code{TRUE}, uses cross fit estimation. Default \code{FALSE}
 #'
 #' @param Y_Z_X_model Optional model formula for \eqn{E(Y \mid Z, X)}.
 #' @param Y_X_S1_model Optional model formula for \eqn{E(Y \mid X, S = 1)}.
@@ -71,6 +73,7 @@
 #'
 #' @param family Character. Outcome family (e.g., \code{"gaussian"}).
 #' @param v_folds Integer. Number of cross-validation folds for SuperLearner.
+#' @param cf_folds Integer. Number of cross-fit folds if implementing cross-fitting. 
 #'
 #' @param effect_dir Character. Direction of beneficial effect (\code{"positive"} or \code{"negative"}).
 #' Used for one-sided inference with bounds.
@@ -87,7 +90,7 @@
 #' }
 #'
 #' Each estimand contains one or more estimator-specific results (e.g.,
-#' \code{aipw}, \code{gcomp}, \code{bound}, \code{sens}), with structure depending
+#' \code{aipw}, \code{gcomp}, \code{bound}, \code{sens_cw}), with structure depending
 #' on the method:
 #'
 #' \describe{
@@ -153,12 +156,13 @@
 #'
 #' @export
 vaxstrat <- function(data,
+                     id_name = NULL, 
                      Y_name = "G",
                      Z_name = "Z",
                      X_name = "X",
                      S_name = "S",
                      estimand = c("nat_inf", "doomed", "pop"),
-                     method = c("gcomp", "ipw", "aipw", "tmle", "bound", "cov_adj_bound", "sens"),
+                     method = c("gcomp", "ipw", "aipw", "tmle", "bound", "cov_adj_bound", "sens_cw", "sens_mono"),
                      exclusion_restriction = c(TRUE, FALSE),
                      cross_world = c(TRUE, FALSE),
                      two_part_model = FALSE,
@@ -168,6 +172,7 @@ vaxstrat <- function(data,
                      seed = 12345,
                      return_se = TRUE,
                      ml = TRUE,
+                     cross_fit = FALSE,
                      Y_Z_X_model = NULL,
                      Y_X_S1_model = NULL,
                      Y_X_S0_model = NULL,
@@ -183,94 +188,97 @@ vaxstrat <- function(data,
                      alpha_level = 0.05,
                      return_models = TRUE,
                      family = "gaussian",
+                     cf_folds = 5, 
                      v_folds = 3,
                      effect_dir = "positive",
                      epsilon = exp(seq(log(0.5), log(2), length = 49))){
   
   set.seed(seed)
   
+  # avoid overwriting vars in data if exist but not supplied
+  internal_idx_name <- ".vaxstrat_idx"
+  internal_id_name  <- ".vaxstrat_id"
+  
+  # Row index for the current analysis dataset
+  data[[internal_idx_name]] <- seq_len(nrow(data))
+  
+  # If user did not supply an ID, create an internal row-level ID
+  if (is.null(id_name)) {
+    data[[internal_id_name]] <- data[[internal_idx_name]]
+    id_name <- internal_id_name
+  }
+  
   # ----------------------------------------------------------------------------
   # 1. Model Fitting -----------------------------------------------------------
   # ----------------------------------------------------------------------------
   
-  # ml_models only for AIPW and TMLE
-  model_list <- list(models = NULL, 
-                     ml_models = NULL)
-  
-  # Estimation methods requiring model fitting (everything but bounds)
-  if(any(method %in% c("gcomp", "ipw", "aipw", "tmle", "sens"))){
-    
-    # If ML specified and aipw, tmle, and/or sens are in method, fit ML models; otherwise only fit GLMs
-    if(ml){
-      if(any(method %in% c("aipw", "tmle", "sens"))){
-        ml_models <- vaxstrat::fit_ml_models(data = data, 
-                                             estimand = estimand,
-                                             method = method,
-                                             exclusion_restriction = exclusion_restriction,
-                                             cross_world = cross_world, 
-                                             Y_name = Y_name,
-                                             Z_name = Z_name,
-                                             S_name = S_name,
-                                             X_name = X_name,
-                                             Y_Z_X_library = Y_Z_X_library,
-                                             Y_X_library = Y_X_library,
-                                             S_X_library = S_X_library,
-                                             S_Z_X_library = S_Z_X_library,
-                                             Z_X_library = Z_X_library,
-                                             family = family,
-                                             v_folds = v_folds)
-        
-        model_list$ml_models <- ml_models
-      } 
+  # Any method that requires model fitting
+  if(any(method %in% c("gcomp", "ipw", "aipw", "tmle", "sens_cw", "sens_mono"))){
+    if (cross_fit) {
       
-      # still force gcomp & ipw to be glm only
-      if(any(method %in% c("gcomp", "ipw"))){
-        models <- vaxstrat::fit_models(data = data, 
-                                       estimand = estimand,
-                                       method = method,
-                                       exclusion_restriction = exclusion_restriction,
-                                       cross_world = cross_world,
-                                       Y_name = Y_name,
-                                       Z_name = Z_name,
-                                       S_name = S_name,
-                                       X_name = X_name,
-                                       Y_Z_X_model = Y_Z_X_model,
-                                       Y_X_S1_model = Y_X_S1_model,
-                                       Y_X_S0_model = Y_X_S0_model,
-                                       S_X_model = S_X_model,
-                                       S_Z_X_model = S_Z_X_model,
-                                       Z_X_model = Z_X_model,
-                                       family = family)
-        
-        model_list$models <- models
-      }
-    } else{
-      # ML not specified; use glms for all 
+      model_list <- cross_fit_models(
+        data = data,
+        id_name = id_name,
+        Y_name = Y_name,
+        Z_name = Z_name,
+        X_name = X_name,
+        S_name = S_name,
+        estimand = estimand,
+        method = method,
+        exclusion_restriction = exclusion_restriction,
+        cross_world = cross_world,
+        seed = seed,
+        ml = ml,
+        Y_Z_X_model = Y_Z_X_model,
+        Y_X_S1_model = Y_X_S1_model,
+        Y_X_S0_model = Y_X_S0_model,
+        S_X_model = S_X_model,
+        S_Z_X_model = S_Z_X_model,
+        Z_X_model = Z_X_model,
+        Y_Z_X_library = Y_Z_X_library,
+        Y_X_library = Y_X_library,
+        S_X_library = S_X_library,
+        S_Z_X_library = S_Z_X_library,
+        Z_X_library = Z_X_library,
+        family = family,
+        v_folds = v_folds,
+        cf_folds = cf_folds
+      )
       
-      models <- vaxstrat::fit_models(data = data, 
-                                     estimand = estimand,
-                                     method = method,
-                                     exclusion_restriction = exclusion_restriction,
-                                     cross_world = cross_world,
-                                     Y_name = Y_name,
-                                     Z_name = Z_name,
-                                     S_name = S_name,
-                                     X_name = X_name,
-                                     Y_Z_X_model = Y_Z_X_model,
-                                     Y_X_S1_model = Y_X_S1_model,
-                                     Y_X_S0_model = Y_X_S0_model,
-                                     S_X_model = S_X_model,
-                                     S_Z_X_model = S_Z_X_model,
-                                     Z_X_model = Z_X_model,
-                                     family = family)
-      model_list$models <- models
-    } 
+    } else {
+      
+      model_list <- fit_models(
+        data = data,
+        Y_name = Y_name,
+        Z_name = Z_name,
+        X_name = X_name,
+        S_name = S_name,
+        estimand = estimand,
+        method = method,
+        exclusion_restriction = exclusion_restriction,
+        cross_world = cross_world,
+        ml = ml,
+        Y_Z_X_model = Y_Z_X_model,
+        Y_X_S1_model = Y_X_S1_model,
+        Y_X_S0_model = Y_X_S0_model,
+        S_X_model = S_X_model,
+        S_Z_X_model = S_Z_X_model,
+        Z_X_model = Z_X_model,
+        Y_Z_X_library = Y_Z_X_library,
+        Y_X_library = Y_X_library,
+        S_X_library = S_X_library,
+        S_Z_X_library = S_Z_X_library,
+        Z_X_library = Z_X_library,
+        family = family,
+        v_folds = v_folds
+      )
+    }
   }
   
   # ----------------------------------------------------------------------------
   # 2. Bootstrap standard error & confidence intervals -------------------------
   # ----------------------------------------------------------------------------
-  if(return_se == FALSE | any(method %in% c("gcomp", "ipw", "bound", "cov_adj_bound", "sens"))){
+  if(return_se == FALSE | any(method %in% c("gcomp", "ipw", "bound", "cov_adj_bound", "sens_cw"))){
     out <- bootstrap_estimates(data = data, 
                                Y_name = Y_name,
                                Z_name = Z_name,
@@ -298,7 +306,10 @@ vaxstrat <- function(data,
                                two_part_model = two_part_model,
                                effect_dir = effect_dir,
                                epsilon = epsilon,
-                               return_se = return_se)
+                               return_se = return_se,
+                               id_name = id_name,
+                               cross_fit = cross_fit,
+                               cf_folds = cf_folds)
   } else{
     out <- vector("list", length = length(estimand))
     names(out) <- estimand
@@ -322,7 +333,7 @@ vaxstrat <- function(data,
           
           estimator <- paste0("ipw", er_suffix)
           
-          out$nat_inf[[estimator]]$pt_est <- do_ipw_nat_inf(data = data, models = models, S_name = S_name, Y_name = Y_name, Z_name = Z_name, exclusion_restriction = er)
+          out$nat_inf[[estimator]]$pt_est <- do_ipw_nat_inf(data = data, model_list = model_list, S_name = S_name, Y_name = Y_name, Z_name = Z_name, exclusion_restriction = er)
           
           out$nat_inf[[estimator]]$test_stat$additive <- (out$nat_inf[[estimator]]$pt_est['additive_effect'] - null_hypothesis_value) / 
             out$nat_inf[[estimator]]$boot_se$se_additive
@@ -353,7 +364,7 @@ vaxstrat <- function(data,
               
               estimator <- paste0("gcomp", er_suffix, cw_suffix)
               
-              out$nat_inf[[estimator]]$pt_est <- do_gcomp_nat_inf(data = data, models = models, Z_name = Z_name, X_name = X_name, exclusion_restriction = er, cross_world = cw, two_part_model = two_part_model)
+              out$nat_inf[[estimator]]$pt_est <- do_gcomp_nat_inf(data = data, model_list = model_list, Z_name = Z_name, X_name = X_name, exclusion_restriction = er, cross_world = cw, two_part_model = two_part_model)
               
               out$nat_inf[[estimator]]$test_stat$additive <- (out$nat_inf[[estimator]]$pt_est['additive_effect'] - null_hypothesis_value) / 
                 out$nat_inf[[estimator]]$boot_se$se_additive
@@ -376,11 +387,7 @@ vaxstrat <- function(data,
               
               estimator <- paste0("aipw", er_suffix, cw_suffix)
               
-              if(ml){
-                out$nat_inf[[estimator]]$pt_est <- do_aipw_nat_inf(data = data, models = ml_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, X_name = X_name, return_se = return_se, exclusion_restriction = er, cross_world = cw, two_part_model = two_part_model)
-              } else{
-                out$nat_inf[[estimator]]$pt_est <- do_aipw_nat_inf(data = data, models = models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, X_name = X_name, return_se = return_se, exclusion_restriction = er, cross_world = cw, two_part_model = two_part_model)
-              }
+              out$nat_inf[[estimator]]$pt_est <- do_aipw_nat_inf(data = data, model_list = model_list, Y_name = Y_name, Z_name = Z_name, S_name = S_name, X_name = X_name, return_se = return_se, exclusion_restriction = er, cross_world = cw, two_part_model = two_part_model)
               
               if(is.null(out$nat_inf[[estimator]]$boot_se)){
                 # closed form SE
@@ -425,11 +432,7 @@ vaxstrat <- function(data,
         }
       
     if("tmle" %in% method){
-      if(ml){
-        out$nat_inf$tmle$pt_est <- do_tmle_nat_inf(data = data, models = ml_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
-      } else{
-        out$nat_inf$tmle$pt_est <- do_tmle_nat_inf(data = data, models = models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
-      }
+      out$nat_inf$tmle$pt_est <- do_tmle_nat_inf(data = data, model_list = model_list, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
       
       if(is.null(out$nat_inf$tmle$boot_se)){
         # closed form SE
@@ -469,41 +472,37 @@ vaxstrat <- function(data,
 
     }
     
-    if("sens" %in% method){
-      if(ml){
-        out$nat_inf$sens$pt_est <- do_sens_aipw_nat_inf(data = data, models = ml_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, epsilon = epsilon, return_se = return_se)
-      } else{
-        out$nat_inf$sens$pt_est <- do_sens_aipw_nat_inf(data = data, models = models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, epsilon = epsilon, return_se = return_se)
-      }
+    if("sens_cw" %in% method){
+      out$nat_inf$sens_cw$pt_est <- do_sens_cw_aipw_nat_inf(data = data, model_list = model_list, Y_name = Y_name, Z_name = Z_name, S_name = S_name, epsilon = epsilon, return_se = return_se)
       
-      if(is.null(out$nat_inf$sens$boot_se)){
+      if(is.null(out$nat_inf$sens_cw$boot_se)){
         # closed form SE
         
         # test stats
-        test_stat_add <- (out$nat_inf$sens$pt_est$additive_effect - null_hypothesis_value) /
-          out$nat_inf$sens$pt_est$additive_se
+        test_stat_add <- (out$nat_inf$sens_cw$pt_est$additive_effect - null_hypothesis_value) /
+          out$nat_inf$sens_cw$pt_est$additive_se
         
-        test_stat_mult <- (out$nat_inf$sens$pt_est$log_multiplicative_effect - null_hypothesis_value) /
-          out$nat_inf$sens$pt_est$log_multiplicative_se
+        test_stat_mult <- (out$nat_inf$sens_cw$pt_est$log_multiplicative_effect - null_hypothesis_value) /
+          out$nat_inf$sens_cw$pt_est$log_multiplicative_se
         
         # p-values
         p_val_add <- 2 * (1 - stats::pnorm(abs(test_stat_add)))
         p_val_mult <- 2 * (1 - stats::pnorm(abs(test_stat_mult)))
         
         # results data frames
-        out$nat_inf$sens$reject$additive <- data.frame(
-          epsilon   = out$nat_inf$sens$pt_est$epsilon,
-          pt_est    = out$nat_inf$sens$pt_est$additive_effect,
-          se        = out$nat_inf$sens$pt_est$additive_se,
+        out$nat_inf$sens_cw$reject$additive <- data.frame(
+          epsilon   = out$nat_inf$sens_cw$pt_est$epsilon,
+          pt_est    = out$nat_inf$sens_cw$pt_est$additive_effect,
+          se        = out$nat_inf$sens_cw$pt_est$additive_se,
           test_stat = test_stat_add,
           p_val      = p_val_add,
           reject    = p_val_add < alpha_level
         )
         
-        out$nat_inf$sens$reject$mult <- data.frame(
-          epsilon   = out$nat_inf$sens$pt_est$epsilon,
-          pt_est    = exp(out$nat_inf$sens$pt_est$log_multiplicative_effect),
-          se        = out$nat_inf$sens$pt_est$log_multiplicative_se,
+        out$nat_inf$sens_cw$reject$mult <- data.frame(
+          epsilon   = out$nat_inf$sens_cw$pt_est$epsilon,
+          pt_est    = exp(out$nat_inf$sens_cw$pt_est$log_multiplicative_effect),
+          se        = out$nat_inf$sens_cw$pt_est$log_multiplicative_se,
           test_stat = test_stat_mult,
           p_val      = p_val_mult,
           reject    = p_val_mult < alpha_level
@@ -513,28 +512,28 @@ vaxstrat <- function(data,
         # bootstrap se
         
         # additive
-        test_stat_add <- (out$nat_inf$sens$pt_est$additive_effect - null_hypothesis_value) /
-          out$nat_inf$sens$boot_se$se_additive
+        test_stat_add <- (out$nat_inf$sens_cw$pt_est$additive_effect - null_hypothesis_value) /
+          out$nat_inf$sens_cw$boot_se$se_additive
         p_val_add <- 2 * (1 - stats::pnorm(abs(test_stat_add)))
         
-        out$nat_inf$sens$reject$additive <- data.frame(
-          epsilon = out$nat_inf$sens$boot_se$epsilon,
-          pt_est = out$nat_inf$sens$pt_est$additive_effect,
-          se = out$nat_inf$sens$boot_se$se_additive,
+        out$nat_inf$sens_cw$reject$additive <- data.frame(
+          epsilon = out$nat_inf$sens_cw$boot_se$epsilon,
+          pt_est = out$nat_inf$sens_cw$pt_est$additive_effect,
+          se = out$nat_inf$sens_cw$boot_se$se_additive,
           test_stat = test_stat_add,
           p_val = p_val_add,
           reject = p_val_add < alpha_level
         )
         
         # multiplicative
-        test_stat_mult <- (out$nat_inf$sens$pt_est$log_multiplicative_effect - null_hypothesis_value) /
-          out$nat_inf$sens$boot_se$se_mult
+        test_stat_mult <- (out$nat_inf$sens_cw$pt_est$log_multiplicative_effect - null_hypothesis_value) /
+          out$nat_inf$sens_cw$boot_se$se_mult
         p_val_mult <- 2 * (1 - stats::pnorm(abs(test_stat$mult)))
         
-        out$nat_inf$sens$reject$mult <- data.frame(
-          epsilon = out$nat_inf$sens$boot_se$epsilon,
-          pt_est = exp(out$nat_inf$sens$pt_est$log_multiplicative_effect),
-          se = out$nat_inf$sens$boot_se$se_mult,
+        out$nat_inf$sens_cw$reject$mult <- data.frame(
+          epsilon = out$nat_inf$sens_cw$boot_se$epsilon,
+          pt_est = exp(out$nat_inf$sens_cw$pt_est$log_multiplicative_effect),
+          se = out$nat_inf$sens_cw$boot_se$se_mult,
           test_stat = test_stat_mult,
           p_val = p_val_mult,
           reject = p_val_mult < alpha_level
@@ -542,8 +541,18 @@ vaxstrat <- function(data,
         
       }
       
-      class(out$nat_inf$sens) <- "sens"
+      class(out$nat_inf$sens_cw) <- "sens_cw"
 
+    }
+    
+    if("sens_mono" %in% method){
+      out$nat_inf$sens_mono <- do_sens_mono_nat_inf(
+        data = data, model_list = model_list,
+        Y_name = Y_name, Z_name = Z_name, S_name = S_name,
+        epsilon = epsilon
+      )
+      
+      class(out$nat_inf$sens_mono) <- "sens_mono"
     }
     
     if("bound" %in% method){
@@ -620,7 +629,7 @@ vaxstrat <- function(data,
   if("doomed" %in% estimand){
     
     if("gcomp" %in% method){
-      out$doomed$gcomp$pt_est <- do_gcomp_doomed(data = data, models = models)
+      out$doomed$gcomp$pt_est <- do_gcomp_doomed(data = data, model_list = model_list)
       
       out$doomed$gcomp$test_stat$additive <- (out$doomed$gcomp$pt_est['additive_effect'] - null_hypothesis_value) / 
         out$doomed$gcomp$boot_se$se_additive
@@ -640,7 +649,7 @@ vaxstrat <- function(data,
     }
     
     if("ipw" %in% method){
-      out$doomed$ipw$pt_est <- do_ipw_doomed(data = data, models = models, S_name = S_name, Y_name = Y_name, Z_name = Z_name)
+      out$doomed$ipw$pt_est <- do_ipw_doomed(data = data, model_list = model_list, S_name = S_name, Y_name = Y_name, Z_name = Z_name)
       
       out$doomed$ipw$test_stat$additive <- (out$doomed$ipw$pt_est['additive_effect'] - null_hypothesis_value) / 
         out$doomed$ipw$boot_se$se_additive
@@ -660,11 +669,7 @@ vaxstrat <- function(data,
     }
     
     if("aipw" %in% method){
-      if(ml){
-        out$doomed$aipw$pt_est <- do_aipw_doomed(data = data, models = ml_models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
-      } else{
-        out$doomed$aipw$pt_est <- do_aipw_doomed(data = data, models = models, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
-      }
+      out$doomed$aipw$pt_est <- do_aipw_doomed(data = data, model_list = model_list, Y_name = Y_name, Z_name = Z_name, S_name = S_name, return_se = return_se)
       
       if(is.null(out$doomed$aipw$boot_se)){
         # closed form SE
@@ -750,7 +755,7 @@ vaxstrat <- function(data,
   if("pop" %in% estimand){
     
     if("gcomp" %in% method){
-      out$pop$gcomp$pt_est <- do_gcomp_pop(data = data, models = models,  Z_name = Z_name, X_name = X_name, two_part_model = two_part_model)
+      out$pop$gcomp$pt_est <- do_gcomp_pop(data = data, model_list = model_list,  Z_name = Z_name, X_name = X_name, two_part_model = two_part_model)
       
       out$pop$gcomp$test_stat$additive <- (out$pop$gcomp$pt_est['additive_effect'] - null_hypothesis_value) / 
         out$pop$gcomp$boot_se$se_additive
@@ -770,7 +775,7 @@ vaxstrat <- function(data,
     }
     
     if("ipw" %in% method){
-      out$pop$ipw$pt_est <- do_ipw_pop(data = data, models = models, Y_name = Y_name, Z_name = Z_name)
+      out$pop$ipw$pt_est <- do_ipw_pop(data = data, model_list = model_list, Y_name = Y_name, Z_name = Z_name)
       
       out$pop$ipw$test_stat$additive <- (out$pop$ipw$pt_est['additive_effect'] - null_hypothesis_value) / 
         out$pop$ipw$boot_se$se_additive
@@ -790,11 +795,7 @@ vaxstrat <- function(data,
     }
     
     if("aipw" %in% method){
-      if(ml){
-        out$pop$aipw$pt_est <- do_aipw_pop(data = data, models = ml_models, Y_name = Y_name, Z_name = Z_name, X_name = X_name, return_se = return_se, two_part_model = two_part_model)
-      } else{
-        out$pop$aipw$pt_est <- do_aipw_pop(data = data, models = models, Y_name = Y_name, Z_name = Z_name, X_name = X_name, return_se = return_se, two_part_model = two_part_model)
-      }
+      out$pop$aipw$pt_est <- do_aipw_pop(data = data, model_list = model_list, Y_name = Y_name, Z_name = Z_name, X_name = X_name, return_se = return_se, two_part_model = two_part_model)
       
       if(is.null(out$pop$aipw$boot_se)){
         # closed form SE

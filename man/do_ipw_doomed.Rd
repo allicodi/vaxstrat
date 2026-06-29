@@ -4,13 +4,12 @@
 \alias{do_ipw_doomed}
 \title{IPW estimator for counterfactual outcomes in the doomed principal stratum}
 \usage{
-do_ipw_doomed(data, models, S_name, Y_name, Z_name)
+do_ipw_doomed(data, model_list, S_name, Y_name, Z_name)
 }
 \arguments{
 \item{data}{A \code{data.frame} containing the dataset to predict on.}
 
-\item{models}{A list of pre-fitted models as returned by \code{fit_models()}
-or \code{fit_ml_models()}.}
+\item{model_list}{A list of pre-fitted models as returned by \code{fit_models()}.}
 
 \item{S_name}{Character; name of the infection indicator variable.}
 

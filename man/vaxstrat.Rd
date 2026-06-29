@@ -6,12 +6,14 @@
 \usage{
 vaxstrat(
   data,
+  id_name = NULL,
   Y_name = "G",
   Z_name = "Z",
   X_name = "X",
   S_name = "S",
   estimand = c("nat_inf", "doomed", "pop"),
-  method = c("gcomp", "ipw", "aipw", "tmle", "bound", "cov_adj_bound", "sens"),
+  method = c("gcomp", "ipw", "aipw", "tmle", "bound", "cov_adj_bound", "sens_cw",
+    "sens_mono"),
   exclusion_restriction = c(TRUE, FALSE),
   cross_world = c(TRUE, FALSE),
   two_part_model = FALSE,
@@ -21,6 +23,7 @@ vaxstrat(
   seed = 12345,
   return_se = TRUE,
   ml = TRUE,
+  cross_fit = FALSE,
   Y_Z_X_model = NULL,
   Y_X_S1_model = NULL,
   Y_X_S0_model = NULL,
@@ -36,6 +39,7 @@ vaxstrat(
   alpha_level = 0.05,
   return_models = TRUE,
   family = "gaussian",
+  cf_folds = 5,
   v_folds = 3,
   effect_dir = "positive",
   epsilon = exp(seq(log(0.5), log(2), length = 49))
@@ -43,6 +47,8 @@ vaxstrat(
 }
 \arguments{
 \item{data}{A data frame containing the analysis dataset.}
+
+\item{id_name}{Chatacter. (Optional) Name of id variable (e.g., pid). Used for cross-fitting fold assignments.}
 
 \item{Y_name}{Character. Name of the outcome variable (e.g., growth).}
 
@@ -93,6 +99,8 @@ a single model. Currently implemented for select estimators.}
 
 \item{ml}{Logical. If \code{TRUE}, uses SuperLearner for nuisance estimation in AIPW/TMLE.}
 
+\item{cross_fit}{Logical. If \code{TRUE}, uses cross fit estimation. Default \code{FALSE}}
+
 \item{Y_Z_X_model}{Optional model formula for \eqn{E(Y \mid Z, X)}.}
 
 \item{Y_X_S1_model}{Optional model formula for \eqn{E(Y \mid X, S = 1)}.}
@@ -123,6 +131,8 @@ a single model. Currently implemented for select estimators.}
 
 \item{family}{Character. Outcome family (e.g., \code{"gaussian"}).}
 
+\item{cf_folds}{Integer. Number of cross-fit folds if implementing cross-fitting.}
+
 \item{v_folds}{Integer. Number of cross-validation folds for SuperLearner.}
 
 \item{effect_dir}{Character. Direction of beneficial effect (\code{"positive"} or \code{"negative"}).
@@ -141,7 +151,7 @@ structured as a nested list with components corresponding to each estimand:
 }
 
 Each estimand contains one or more estimator-specific results (e.g.,
-\code{aipw}, \code{gcomp}, \code{bound}, \code{sens}), with structure depending
+\code{aipw}, \code{gcomp}, \code{bound}, \code{sens_cw}), with structure depending
 on the method:
 
 \describe{

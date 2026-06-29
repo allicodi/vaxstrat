@@ -42,7 +42,7 @@ do_unadj_nat_inf <- function(
 #' using g-computation under specified identification assumptions.
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models returned by \code{fit_models}.
+#' @param model_list A named list of fitted nuisance models returned by \code{fit_models}.
 #' @param Z_name Character string specifying the treatment variable.
 #' @param X_name Character vector of covariate names.
 #' @param exclusion_restriction Logical; whether the exclusion restriction assumption is imposed.
@@ -63,10 +63,12 @@ do_unadj_nat_inf <- function(
 #'
 #' @export
 do_gcomp_nat_inf <- function(
-  data, models, Z_name = NULL, X_name = NULL,
+  data, model_list, Z_name = NULL, X_name = NULL,
   exclusion_restriction = FALSE,
   cross_world = TRUE,
   two_part_model = FALSE){
+  
+  models <- model_list$models
   
   if(!exclusion_restriction & cross_world){
     # Psi_1 = E[P(S=1 | Z = 0, X) / P(Y = 1 | Z = 0) * E[Y | Z=1, X] ]
@@ -125,22 +127,37 @@ do_gcomp_nat_inf <- function(
 
   }else if(exclusion_restriction & cross_world){
     rho_0_X <- simple_predict(models$fit_S_Z0_X, newdata = data)
-    mu_01_X <- simple_predict(models$fit_Y_Z0_S1_X, newdata = data)
-    pi_1_X <- simple_predict(models$fit_Z_X, newdata = data)
-    pi_0_X <- 1 - pi_1_X
+    rho_1_X <- simple_predict(models$fit_S_Z1_X, newdata = data)
     rho_bar_0 <- mean(rho_0_X)
     
-    # psi_0 = Weight * E[E[Y | Z = 0, Y = 1, X]]
-    psi_tilde_0_X <- rho_0_X / rho_bar_0 * mu_01_X
-    
-    psi_0 <- mean( psi_tilde_0_X )
-    
+    mu_01_X <- simple_predict(models$fit_Y_Z0_S1_X, newdata = data)
     mu_11_X <- simple_predict(models$fit_Y_Z1_S1_X, newdata = data)
     mu_10_X <- simple_predict(models$fit_Y_Z1_S0_X, newdata = data)
     mu_00_X <- simple_predict(models$fit_Y_Z0_S0_X, newdata = data)
-    mu_dot0_X <- pi_1_X * mu_10_X + pi_0_X * mu_00_X
+    
+    pi_1_X <- simple_predict(models$fit_Z_X, newdata = data)
+    pi_0_X <- 1 - pi_1_X
+    
+    # psi_0 = Weight * E[E[Y | Z = 0, Y = 1, X]]
+    psi_tilde_0_X <- rho_0_X / rho_bar_0 * mu_01_X
+    psi_0 <- mean( psi_tilde_0_X )
+    
+    # original
+    # mu_dot0_X <- pi_1_X * mu_10_X + pi_0_X * mu_00_X
+    
+    # more generalizable
+    # wt_1
+    pi_1_S0_X <- (1 - rho_1_X) * pi_1_X /
+      (((1 - rho_0_X)*pi_0_X) +
+      (1 - rho_1_X) * pi_1_X)
+    
+    # wt_0
+    pi_0_S0_X <- (1 - rho_0_X) * pi_0_X /
+      (((1 - rho_0_X)*pi_0_X) +
+      (1 - rho_1_X) * pi_1_X)
+    
+    mu_dot0_X <- pi_1_S0_X * mu_10_X + pi_0_S0_X * mu_00_X
 
-    rho_1_X <- simple_predict(models$fit_S_Z1_X, newdata = data)
     rho_bar_dot <- pi_1_X * rho_1_X + pi_0_X * rho_0_X
 
     psi_tilde_1_X <- rho_1_X / rho_bar_0 * mu_11_X + ( rho_0_X - rho_1_X ) / rho_bar_0 * mu_dot0_X
@@ -164,7 +181,7 @@ do_gcomp_nat_inf <- function(
 #' probability weighting (IPW).
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models.
+#' @param model_list A named list of fitted nuisance models.
 #' @param exclusion_restriction Logical; whether the exclusion restriction assumption is imposed.
 #' @param S_name Character string specifying the infection indicator.
 #' @param Y_name Character string specifying the outcome variable.
@@ -182,10 +199,12 @@ do_gcomp_nat_inf <- function(
 #'   \item{psi_0}{Estimated mean outcome under control.}
 #' }
 do_ipw_nat_inf <- function(
-    data, models,
+    data, model_list,
     exclusion_restriction = FALSE,
     S_name, Y_name, Z_name
 ){
+  
+  models <- model_list$models
   
   if(!exclusion_restriction){
     # Psi_1 = E[P(S=1 | Z = 0, X) / P(Y = 1 | Z = 0) * E[Y | Z=1, X] ]  
@@ -245,7 +264,7 @@ do_ipw_nat_inf <- function(
 #' naturally infected principal stratum.
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models.
+#' @param model_list A named list of fitted nuisance models.
 #' @param Y_name Character string specifying the outcome variable. Default is "Y".
 #' @param Z_name Character string specifying the treatment variable. Default is "Z".
 #' @param S_name Character string specifying the infection indicator. Default is "S".
@@ -271,7 +290,7 @@ do_ipw_nat_inf <- function(
 #'
 #' @export
 do_aipw_nat_inf <- function(
-  data, models,
+  data, model_list,
   exclusion_restriction = FALSE,
   cross_world = TRUE,
   Y_name = "Y",
@@ -281,6 +300,12 @@ do_aipw_nat_inf <- function(
   return_se = FALSE,
   two_part_model = FALSE
 ){
+  
+  if(!is.null(model_list$ml_models)){
+    models <- model_list$ml_models
+  } else{
+    models <- model_list$models
+  }
   
   if(cross_world & !exclusion_restriction){
     rho_0 <- simple_predict(models$fit_S_Z0_X, newdata = data)
@@ -386,6 +411,8 @@ do_aipw_nat_inf <- function(
     augmentation_0 <- psi_0_augmentation
   }else if(exclusion_restriction & cross_world){
     rho_0_X <- simple_predict(models$fit_S_Z0_X, newdata = data)
+    rho_1_X <- simple_predict(models$fit_S_Z1_X, newdata = data)
+    
     mu_01_X <- simple_predict(models$fit_Y_Z0_S1_X, newdata = data)
     pi_1_X <- simple_predict(models$fit_Z_X, newdata = data)
     pi_0_X <- 1 - pi_1_X
@@ -408,9 +435,23 @@ do_aipw_nat_inf <- function(
     mu_11_X <- simple_predict(models$fit_Y_Z1_S1_X, newdata = data)
     mu_10_X <- simple_predict(models$fit_Y_Z1_S0_X, newdata = data)
     mu_00_X <- simple_predict(models$fit_Y_Z0_S0_X, newdata = data)
-    mu_dot0_X <- pi_1_X * mu_10_X + pi_0_X * mu_00_X
+    
+    # original
+    # mu_dot0_X <- pi_1_X * mu_10_X + pi_0_X * mu_00_X
+    
+    # more generalizable
+    # wt_1
+    pi_1_S0_X <- (1 - rho_1_X) * pi_1_X /
+      (((1 - rho_0_X)*pi_0_X) +
+      (1 - rho_1_X) * pi_1_X)
+    
+    # wt_0
+    pi_0_S0_X <- (1 - rho_0_X) * pi_0_X /
+      (((1 - rho_0_X)*pi_0_X) +
+      (1 - rho_1_X) * pi_1_X)
+    
+    mu_dot0_X <- pi_1_S0_X * mu_10_X + pi_0_S0_X * mu_00_X
 
-    rho_1_X <- simple_predict(models$fit_S_Z1_X, newdata = data)
     rho_bar_dot <- pi_1_X * rho_1_X + pi_0_X * rho_0_X
 
     psi_tilde_1_X <- rho_1_X / rho_bar_0 * mu_11_X + ( rho_0_X - rho_1_X ) / rho_bar_0 * mu_dot0_X
@@ -470,7 +511,7 @@ do_aipw_nat_inf <- function(
 #' naturally infected principal stratum.
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models.
+#' @param model_list A named list of fitted nuisance models.
 #' @param exclusion_restriction Logical; currently not supported.
 #' @param Y_name Character string specifying the outcome variable.
 #' @param Z_name Character string specifying the treatment variable.
@@ -487,12 +528,18 @@ do_aipw_nat_inf <- function(
 #' A named numeric vector containing the additive and log multiplicative effects.
 #' If \code{return_se = TRUE}, standard errors and component estimates are included.
 do_tmle_nat_inf <- function(
-    data, models, 
+    data, model_list, 
     exclusion_restriction = FALSE,
     Y_name = "Y", Z_name = "Z", S_name = "S",
     return_se = FALSE, max_iter = 10,
     tol = 1 / (sqrt(dim(data)[1]) * log(dim(data)[1]))
 ){
+  
+  if(!is.null(model_list$ml_models)){
+    models <- model_list$ml_models
+  } else{
+    models <- model_list$models
+  }
   
   if(exclusion_restriction){
     stop("TMLE with exclusion restriction not implemented yet")
@@ -777,14 +824,14 @@ do_tmle_nat_inf <- function(
 #' a parameter \eqn{\epsilon}.
 #'
 #' @param data A data.frame containing observed data.
-#' @param models A named list of fitted nuisance models.
+#' @param model_list A named list of fitted nuisance models.
 #' @param Y_name Character string specifying the outcome variable.
 #' @param Z_name Character string specifying the treatment variable.
 #' @param S_name Character string specifying the infection indicator.
 #' @param epsilon Numeric vector of sensitivity parameters.
 #' @param return_se Logical; whether to return standard errors.
 #'
-#' @return A list with class \code{"sens"} containing:
+#' @return A list with class \code{"sens_cw"} containing:
 #' \describe{
 #'   \item{epsilon}{Grid of sensitivity parameter values.}
 #'   \item{psi_1_epsilon}{Estimated \eqn{\psi_1} for each epsilon.}
@@ -794,15 +841,19 @@ do_tmle_nat_inf <- function(
 #' }
 #' 
 #' @export
-do_sens_aipw_nat_inf <- function(data,
-                         models,
-                         Y_name = "Y",
-                         Z_name = "Z",
-                         S_name = "S",
-                         epsilon = exp(seq(log(0.5), log(2), length = 49)),
-                         return_se = FALSE){
+do_sens_cw_aipw_nat_inf <- function(data,
+                                   model_list,
+                                   Y_name = "Y",
+                                   Z_name = "Z",
+                                   S_name = "S",
+                                   epsilon = exp(seq(log(0.5), log(2), length = 49)),
+                                   return_se = FALSE){
   
-  
+  if(!is.null(model_list$ml_models)){
+    models <- model_list$ml_models
+  } else{
+    models <- model_list$models
+  }
   
   pi_1 <- simple_predict(models$fit_Z_X, newdata = data)
   
@@ -889,7 +940,6 @@ do_sens_aipw_nat_inf <- function(data,
     SIMPLIFY = FALSE
   )
   
-  
   # Additive effect
   efficient_growth_effect_epsilon <- lapply(psi_1_epsilon_aipw, function(psi_1_eps){
     psi_1_eps - psi_0_aipw
@@ -944,9 +994,156 @@ do_sens_aipw_nat_inf <- function(data,
     )
   }
   
-  class(out) <- "sens"
+  class(out) <- "sens_cw"
   
   return(out)
+}
+
+#' Sensitivity analysis to monotonicity using AIPW estimator
+#'
+#' Performs sensitivity analysis for violations of monotonicity using
+#' a parameter \eqn{\epsilon}.
+#'
+#' @param data A data.frame containing observed data.
+#' @param model_list A named list of fitted nuisance models.
+#' @param Y_name Character string specifying the outcome variable.
+#' @param Z_name Character string specifying the treatment variable.
+#' @param S_name Character string specifying the infection indicator.
+#' @param epsilon Numeric vector of sensitivity parameters.
+#'
+#' @return A list with class \code{"monotonicity_sens"} containing:
+#' \describe{
+#'   
+#' }
+#' 
+#' @export
+do_sens_mono_nat_inf <- function(data,
+                                 model_list,
+                                 Y_name = "Y",
+                                 Z_name = "Z",
+                                 S_name = "S",
+                                 epsilon = exp(seq(log(0.5), log(2), length = 49))
+                                 ){
+  
+  if(!is.null(model_list$ml_models)){
+    models <- model_list$ml_models
+  } else{
+    models <- model_list$models
+  }
+  
+  # ---------------------------------------
+  # Get bounds on p
+  # ---------------------------------------
+  
+  # 1. fit your logistic regression of S ~ Z + X
+  # 2. get predictions for all X setting Z = 1 => these are estimates \rho_{1,n}(X_i) of \rho_1(X_i), i = 1, \dots, n
+  # 3. get predictions for all X setting Z = 0 => these are estimates \rho_{1,0}(X_i) of \rho_0(X_i), i = 1, \dots, n
+  # 4. calculate max(0, max_{i=1,...n} (\rho_{1,n}(X_i) - \rho_{0,n}(X_i))) -> call this p_min
+  # 5. calculate min( min_{i = 1, ..., n} \rho_{1,n}(X_i), min_{i=1,...,n} (1 - \rho_{0,n}(X_i)) ) -> call this p_max
+  # 6. let p vary between p_min and p_max
+  
+  data_0 <- data; data_0[[Z_name]] <- 0
+  data_1 <- data; data_1[[Z_name]] <- 1
+  
+  # 2. get predictions for all X setting Z = 1 => these are estimates \rho_{1,n}(X_i) of \rho_1(X_i), i = 1, \dots, n
+  rho_0_X <- simple_predict(models$fit_S_Z_X, newdata = data_0)
+  
+  # 3. get predictions for all X setting Z = 0 => these are estimates \rho_{1,0}(X_i) of \rho_0(X_i), i = 1, \dots, n
+  rho_1_X <- simple_predict(models$fit_S_Z_X, newdata = data_1)
+  
+  # 4. calculate max(0, max_{i=1,...n} (\rho_{1,n}(X_i) - \rho_{0,n}(X_i))) -> call this p_min
+  rho_dif <- rho_1_X - rho_0_X
+  p_min <- max(0, rho_dif)
+  
+  # 5. calculate min( min_{i = 1, ..., n} \rho_{1,n}(X_i), min_{i=1,...,n} (1 - \rho_{0,n}(X_i)) ) -> call this p_max
+  p_max <- min(min(rho_1_X), min(1 - rho_0_X))
+  
+  # 6. let p vary between p_min and p_max, equally spaced on log scale but if starting at 0 hard code
+  if(p_min > 0){
+    p_range <- exp(seq(log(p_min), log(p_max), length = length(epsilon)))
+  } else{
+    p_range <- c(
+      0,
+      exp(seq(log(1e-6), log(p_max), length.out = length(epsilon)))[-1]
+    )
+  }
+
+  # grid of epsilons and ps
+  p_epsilon_grid <- expand.grid(p = p_range, epsilon = epsilon)
+  
+  # ---------------------------------------
+  # Plug-in estimate
+  # ---------------------------------------
+  
+  # addditional components
+  mu_11_X <- simple_predict(models$fit_Y_Z1_S1_X, newdata = data)
+  mu_10_X <- simple_predict(models$fit_Y_Z1_S0_X, newdata = data)
+  mu_01_X <- simple_predict(models$fit_Y_Z0_S1_X, newdata = data)
+  mu_00_X <- simple_predict(models$fit_Y_Z0_S0_X, newdata = data)
+  
+  pi_1_X <- simple_predict(models$fit_Z_X, newdata = data)
+  pi_0_X <- 1 - pi_1_X
+  
+  # wt_1
+  pi_1_S0_X <- (1 - rho_1_X) * pi_1_X /
+    (((1 - rho_0_X)*pi_0_X) +
+    (1 - rho_1_X) * pi_1_X)
+  
+  # wt_0
+  pi_0_S0_X <- (1 - rho_0_X) * pi_0_X /
+    (((1 - rho_0_X)*pi_0_X) +
+    (1 - rho_1_X) * pi_1_X)
+  
+  mu_dot0_X <- pi_1_S0_X * mu_10_X + pi_0_S0_X * mu_00_X
+  
+  rho_bar_0 <- mean(rho_0_X)
+  
+  # put together to estimate \psi_1 = E[Y(1) | S(0) = 1] ---------------------
+  # outer weight
+  wt_X <- rho_0_X / rho_bar_0
+  
+  psi_1_epsilon_p_X <- lapply(seq_len(nrow(p_epsilon_grid)), function(i) {
+    
+    p_i <- p_epsilon_grid$p[i]
+    epsilon_i <- p_epsilon_grid$epsilon[i]
+    
+    term1_X <- mu_11_X /
+      (((rho_1_X - p_i) / rho_1_X) + (p_i / (epsilon_i * rho_1_X))) *
+      ((rho_1_X - p_i) / rho_0_X)
+    
+    term2_X <- mu_dot0_X *
+      ((rho_0_X - rho_1_X + p_i) / rho_0_X)
+    
+    wt_X * (term1_X + term2_X)
+  })
+  
+  psi_1_epsilon_p <- sapply(psi_1_epsilon_p_X, mean)
+  
+  
+  # psi_0
+  psi_tilde_0_X <- wt_X * mu_01_X
+  psi_0 <- mean(psi_tilde_0_X)
+  
+  # effects
+  additive_growth_effect <- psi_1_epsilon_p - psi_0
+  log_mult_growth_effect <- log(psi_1_epsilon_p / psi_0)
+  
+  out <- list(
+    epsilon = p_epsilon_grid$epsilon,
+    p = p_epsilon_grid$p,
+    grid = p_epsilon_grid,
+    p_min = p_min,
+    p_max = p_max,
+    psi_1_epsilon_p = psi_1_epsilon_p,
+    psi_0 = psi_0,
+    additive_effect = additive_growth_effect,
+    log_multiplicative_effect = log_mult_growth_effect
+  )
+  
+  class(out) <- "sens_mono"
+  
+  return(out)
+  
 }
 
 #' Nonparametric bounds for naturally infected principal stratum

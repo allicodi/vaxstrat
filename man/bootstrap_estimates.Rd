@@ -32,7 +32,10 @@ bootstrap_estimates(
   effect_dir = "positive",
   epsilon = exp(seq(log(0.5), log(2), length = 50)),
   return_se = TRUE,
-  two_part_model = FALSE
+  two_part_model = FALSE,
+  id_name = NULL,
+  cross_fit = FALSE,
+  cf_folds = 5
 )
 }
 \arguments{
